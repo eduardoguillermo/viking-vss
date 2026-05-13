@@ -371,11 +371,17 @@ function modalZigbee(idx=-1){
       <div class="fg"><label>Modelo</label><input id="z-mo" value="${d.modelo||''}" placeholder="MCCGQ11LM"></div>
       <div class="fg"><label>Dirección hex</label><input id="z-h" value="${d.hex||''}" placeholder="0x00158D0001A2B3C4" style="font-family:monospace"></div>
       <div class="fg"><label>Ubicación física</label><input id="z-u" value="${d.ubicacion||''}" placeholder="Ej: Frente, puerta madera"></div>
+      <div class="fg"><label>Marca de pilas</label><input id="z-mp" value="${d.marcaPilas||''}" placeholder="Ej: Energizer"></div>
+      <div class="fg"><label>Modelo de pilas</label><input id="z-mop" value="${d.modeloPilas||''}" placeholder="Ej: AA 1.5V"></div>
+      <div class="fg"><label>Fecha último cambio pilas</label><input id="z-fcp" type="date" value="${d.fechaCambioPilas||''}"></div>
       <div class="fg full"><label>Observaciones</label><input id="z-o" value="${d.obs||''}" placeholder="Opcional"></div>
     </div>`,()=>{
     const n=document.getElementById('z-n').value.trim();
     if(!n){alert('El nombre es obligatorio.');return false;}
-    const obj={tipo:document.getElementById('z-t').value,nombre:n,marca:document.getElementById('z-ma').value,modelo:document.getElementById('z-mo').value,hex:document.getElementById('z-h').value,ubicacion:document.getElementById('z-u').value,marcaPilas:document.getElementById('z-mp')?document.getElementById('z-mp').value:'',modeloPilas:document.getElementById('z-mop')?document.getElementById('z-mop').value:'',fechaCambioPilas:document.getElementById('z-fcp')?document.getElementById('z-fcp').value:'',obs:document.getElementById('z-o').value};
+    const mp=document.getElementById('z-mp')?document.getElementById('z-mp').value:'';
+    const mop=document.getElementById('z-mop')?document.getElementById('z-mop').value:'';
+    const fcp=document.getElementById('z-fcp')?document.getElementById('z-fcp').value:'';
+    const obj={tipo:document.getElementById('z-t').value,nombre:n,marca:document.getElementById('z-ma').value,modelo:document.getElementById('z-mo').value,hex:document.getElementById('z-h').value,marcaPilas:mp,modeloPilas:mop,fechaCambioPilas:fcp,ubicacion:document.getElementById('z-u').value,obs:document.getElementById('z-o').value};
     if(idx>=0) c.zigbee[idx]=obj; else c.zigbee.push(obj);
     save();renderZigbee();return true;
   });
@@ -1219,3 +1225,258 @@ function enviarEmailPres(id){
 // INIT
 // =======================================================
 goTo('clientes');
+// PRESUPUESTOS helpers =====================================
+function defPrecios(){
+  const items={};
+  ['Central Zpro','ESP32','Bateria 12V 7Ah','Cargador','Fuente/Transformador'].forEach(function(k){ items[k]={cant:1,precio:0}; });
+  ['Puerta','Ventana','Boton','Vibracion','Router Zigbee','Rele','Luz','UPS','Sirena exterior'].forEach(function(s){ items[s]={cant:0,precio:0}; });
+  ['Hs. instalacion','Hs. configuracion'].forEach(function(k){ items[k]={cant:1,precio:0}; });
+  ['Cableado (ml)','Cajas de paso','Gabinete/caja estanca','Tornilleria y fijaciones','Traslado/viaticos'].forEach(function(k){ items[k]={cant:0,precio:0}; });
+  return items;
+}
+
+function defPres(){
+  return {
+    validez:15, plazo:'5 dias habiles',
+    formaPago:'50% adelanto - 50% contra entrega',
+    garantia:'12 meses en materiales y mano de obra',
+    incluye:'Instalacion, configuracion y puesta en marcha',
+    noIncluye:'Obras civiles, cableado de red electrica',
+    moneda:'ARS', tipoCambio:1, descuento:0, margen:30, obsInternas:''
+  };
+}
+
+function getCorrelativo(){
+  const yr = String(new Date().getFullYear());
+  const same = DB.presupuestos.filter(function(p){ return (p.fecha||today()).slice(0,4)===yr; });
+  return same.length + 1;
+}
+
+function presNum(p){
+  const yr = (p.fecha||today()).slice(0,4);
+  const num = String(p.correlativo||1).padStart(4,'0');
+  const ver = p.version > 1 ? '-v'+p.version : '';
+  return 'VSS-'+yr+'-'+num+ver;
+}
+
+function formatMonto(v,moneda){
+  return ((moneda==='USD')?'U$S ':'$')+Math.round(v).toLocaleString('es-AR');
+}
+
+function calcSubtotales(p){
+  const cat={materiales:0,sensores:0,mo:0,adicionales:0};
+  const matK=['Central Zpro','ESP32','Bateria 12V 7Ah','Cargador','Fuente/Transformador'];
+  const moK=['Hs. instalacion','Hs. configuracion'];
+  const adK=['Cableado (ml)','Cajas de paso','Gabinete/caja estanca','Tornilleria y fijaciones','Traslado/viaticos'];
+  const SENSOR_ITEMS=['Puerta','Ventana','Boton','Vibracion','Router Zigbee','Rele','Luz','UPS','Sirena exterior'];
+  if(!p.precios) return cat;
+  Object.entries(p.precios).forEach(function(entry){
+    const k=entry[0], i=entry[1];
+    const val=(parseFloat(i.cant)||0)*(parseFloat(i.precio)||0);
+    if(matK.includes(k)) cat.materiales+=val;
+    else if(SENSOR_ITEMS.includes(k)) cat.sensores+=val;
+    else if(moK.includes(k)) cat.mo+=val;
+    else if(adK.includes(k)) cat.adicionales+=val;
+  });
+  return cat;
+}
+
+function calcTotal(p){
+  const sub=calcSubtotales(p);
+  const bruto=Object.values(sub).reduce(function(a,v){return a+v;},0);
+  const margen=bruto*(parseFloat(p.margen)||0)/100;
+  return bruto+margen-(parseFloat(p.descuento)||0);
+}
+
+function updPres(id,campo,valor){
+  const p=DB.presupuestos.find(function(x){return x.id===id;});
+  if(!p) return;
+  p[campo]=valor; save();
+}
+
+function updatePrecio(id,key,field,valor){
+  const p=DB.presupuestos.find(function(x){return x.id===id;});
+  if(!p||!p.precios||!p.precios[key]) return;
+  p.precios[key][field]=parseFloat(valor)||0;
+  save();
+}
+
+function nuevaVersionPres(id){
+  const orig=DB.presupuestos.find(function(x){return x.id===id;});
+  if(!orig) return;
+  if(!confirm('Crear nueva version de '+presNum(orig)+'?')) return;
+  const nueva=JSON.parse(JSON.stringify(orig));
+  nueva.id=DB.nid++;
+  nueva.version=(orig.version||1)+1;
+  nueva.estado='Borrador';
+  nueva.fecha=today();
+  DB.presupuestos.unshift(nueva);
+  save(); renderPresupuestos();
+}
+
+function abrirEditorPres(id){
+  const p=DB.presupuestos.find(function(x){return x.id===id;});
+  if(!p) return;
+  if(!p.precios) p.precios=defPrecios();
+  const SENSOR_ITEMS=['Puerta','Ventana','Boton','Vibracion','Router Zigbee','Rele','Luz','UPS','Sirena exterior'];
+  SENSOR_ITEMS.forEach(function(s){
+    if(p.sensores&&p.sensores[s]&&p.sensores[s].qty>0){
+      if(!p.precios[s]) p.precios[s]={cant:0,precio:0};
+      p.precios[s].cant=p.sensores[s].qty;
+    }
+  });
+
+  function fila(key,label,readonlyCant){
+    var i=p.precios[key]||{cant:0,precio:0};
+    var sub=(parseFloat(i.cant)||0)*(parseFloat(i.precio)||0);
+    var ro=readonlyCant?"readonly":"";
+    var h="<tr style='border-bottom:1px solid var(--border)'>";
+    h+="<td style='padding:6px 10px;font-size:12px'>"+label+"</td>";
+    h+="<td style='padding:4px 6px'><input type='number' min='0' value='"+(i.cant||0)+"'";
+    h+=" "+ro+" style='width:60px;text-align:center;border:1px solid var(--border);padding:4px 6px;font-size:12px'";
+    h+=" data-pid='"+id+"' data-key='"+key+"' data-field='cant'";
+    h+=" oninput='updatePrecio(parseInt(this.dataset.pid),this.dataset.key,this.dataset.field,this.value)'></td>";
+    h+="<td style='padding:4px 6px'><input type='number' min='0' value='"+(i.precio||0)+"'";
+    h+=" style='width:110px;border:1px solid var(--border);padding:4px 8px;font-size:12px'";
+    h+=" data-pid='"+id+"' data-key='"+key+"' data-field='precio'";
+    h+=" oninput='updatePrecio(parseInt(this.dataset.pid),this.dataset.key,this.dataset.field,this.value)'></td>";
+    h+="<td style='padding:6px 10px;font-size:12px;font-weight:600;text-align:right'>"+formatMonto(sub,p.moneda)+"</td>";
+    h+="</tr>";
+    return h;
+  }
+
+  function sec(titulo,filas){
+    return '<tr style="background:#1a1a1a"><td colspan="4" style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#fff">'+titulo+'</td></tr>'+filas;
+  }
+
+  const sub=calcSubtotales(p);
+  const bruto=Object.values(sub).reduce(function(a,v){return a+v;},0);
+  const margenVal=bruto*(parseFloat(p.margen)||0)/100;
+  const totalFinal=bruto+margenVal-(parseFloat(p.descuento)||0);
+
+  var inp=function(label,campo,val,type){
+    type=type||'text';
+    var h="<div class='fg' style='margin:0'><label>"+label+"</label>";
+    h+="<input type='"+type+"' value='"+(val||"")+"'";
+    h+=" style='padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%'";
+    h+=" data-pid='"+id+"' data-campo='"+campo+"'";
+    h+=" oninput='updPres(parseInt(this.dataset.pid),this.dataset.campo,this.value)'></div>";
+    return h;
+  };
+
+  var sel=function(label,campo,opts,cur){
+    var h="<div class='fg' style='margin:0'><label>"+label+"</label>";
+    h+="<select style='padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%'";
+    h+=" data-pid='"+id+"' data-campo='"+campo+"'";
+    h+=" onchange='updPres(parseInt(this.dataset.pid),this.dataset.campo,this.value)'>";
+    h+=opts.map(function(o){return '<option'+(o===cur?' selected':'')+'>'+o+'</option>';}).join('');
+    h+="</select></div>";
+    return h;
+  };
+
+  const tablaPrecios=
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:12px">'+
+    '<thead><tr style="background:var(--surface2)">'+
+      '<th style="padding:7px 10px;text-align:left;font-size:10px">Item</th>'+
+      '<th style="padding:7px 10px;font-size:10px;text-align:center">Cant.</th>'+
+      '<th style="padding:7px 10px;font-size:10px">Precio unit.</th>'+
+      '<th style="padding:7px 10px;font-size:10px;text-align:right">Subtotal</th>'+
+    '</tr></thead><tbody>'+
+    sec('Equipamiento central',
+      fila('Central Zpro','Central Zpro')+fila('ESP32','Modulo ESP32')+
+      fila('Bateria 12V 7Ah','Bateria 12V 7Ah')+fila('Cargador','Cargador')+
+      fila('Fuente/Transformador','Fuente/Transformador')
+    )+
+    sec('Sensores y dispositivos',
+      SENSOR_ITEMS.map(function(s){
+        const ro=!!(p.sensores&&p.sensores[s]&&p.sensores[s].qty>0);
+        return fila(s,s,ro);
+      }).join('')
+    )+
+    sec('Mano de obra',fila('Hs. instalacion','Horas de instalacion')+fila('Hs. configuracion','Horas de configuracion'))+
+    sec('Adicionales',
+      fila('Cableado (ml)','Cableado (ml)')+fila('Cajas de paso','Cajas de paso')+
+      fila('Gabinete/caja estanca','Gabinete/caja estanca')+
+      fila('Tornilleria y fijaciones','Tornilleria y fijaciones')+
+      fila('Traslado/viaticos','Traslado/viaticos')
+    )+
+    '</tbody></table>';
+
+  const resumen=
+    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;font-size:12px;color:var(--text2)">'+
+        '<div>Equipamiento: <strong>'+formatMonto(sub.materiales,p.moneda)+'</strong></div>'+
+        '<div>Sensores: <strong>'+formatMonto(sub.sensores,p.moneda)+'</strong></div>'+
+        '<div>Mano de obra: <strong>'+formatMonto(sub.mo,p.moneda)+'</strong></div>'+
+        '<div>Adicionales: <strong>'+formatMonto(sub.adicionales,p.moneda)+'</strong></div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">'+
+        '<div class="fg" style="margin:0"><label>Margen (%)</label>'+
+          '<input type="number" min="0" max="100" value="'+(p.margen||0)+'" '+
+          'style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%" '+
+          "oninput=\"updPres("+id+",'margen',this.value)\"></div>"+
+        '<div class="fg" style="margin:0"><label>Descuento ($)</label>'+
+          '<input type="number" min="0" value="'+(p.descuento||0)+'" '+
+          'style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%" '+
+          "oninput=\"updPres("+id+",'descuento',this.value)\"></div>"+
+        '<div style="background:#111;color:#fff;border-radius:var(--r);padding:10px;text-align:center">'+
+          '<div style="font-size:9px;color:#aaa;text-transform:uppercase;margin-bottom:3px">Total final</div>'+
+          '<div style="font-size:17px;font-weight:700">'+formatMonto(totalFinal,p.moneda)+'</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+  openModal('Presupuesto '+presNum(p),
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">'+
+      sel('Estado','estado',['Borrador','Enviado','Aprobado','Rechazado'],p.estado)+
+      sel('Moneda','moneda',['ARS','USD'],p.moneda)+
+      inp('Tipo de cambio','tipoCambio',p.tipoCambio,'number')+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+      inp('Nombre cliente *','nombre',p.nombre)+
+      inp('Telefono','tel',p.tel)+
+      inp('Email','email',p.email,'email')+
+      inp('Direccion','dir',p.dir)+
+      inp('Barrio','barrio',p.barrio)+
+      sel('Modelo Zpro','modelo',['Base','Energy','Comfort','Black'],p.modelo)+
+      inp('Tecnico','tecnico',p.tecnico)+
+    '</div>'+
+    '<hr class="div"><div class="sectitle">Computo de materiales y precios</div>'+
+    tablaPrecios+resumen+
+    '<hr class="div"><div class="sectitle">Condiciones comerciales</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+      inp('Validez (dias)','validez',p.validez,'number')+
+      inp('Plazo de entrega','plazo',p.plazo)+
+      inp('Forma de pago','formaPago',p.formaPago)+
+      inp('Garantia','garantia',p.garantia)+
+      inp('Incluye','incluye',p.incluye)+
+      inp('No incluye','noIncluye',p.noIncluye)+
+    '</div>'+
+    '<hr class="div">'+
+    '<div class="fg"><label>Observaciones internas (no aparecen en el PDF)</label>'+
+      "<textarea style='padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%;min-height:56px;font-family:inherit'" +"oninput='updPres("+id+",\"obsInternas\",this.value)'>"+(p.obsInternas||'')+"</textarea></div>"+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+      '<button class="btn btn-p" style="flex:1" onclick="generarPDF('+id+');cerrarModal()">PDF</button>'+
+      '<button class="btn" style="flex:1;color:var(--blue);border-color:var(--blue)" onclick="enviarEmailPres('+id+');cerrarModal()">Email</button>'+
+      (p.estado==='Aprobado'?'<button class="btn btn-g" style="flex:1" onclick="convertirCliente('+id+');cerrarModal()">Cliente</button>':'')+
+    '</div>'
+  ,null,true);
+}
+
+function nuevoPresupuesto(){
+  const p = Object.assign({
+    id:DB.nid++, relId:null,
+    correlativo:getCorrelativo(), version:1,
+    nombre:'', tel:'', email:'', dir:'', barrio:'', ambientes:'',
+    tipo:'Casa', sup:'', plantas:'Planta baja', material:'Mampostería',
+    alarma:'No', perro:'No', horario:'Siempre habitado',
+    modelo:'Base', sensores:{}, router:'', distancia:'', obstaculos:'',
+    tecnico:'', obs:'', estado:'Borrador', fecha:today(),
+    precios:defPrecios()
+  }, defPres());
+  DB.presupuestos.unshift(p);
+  save();
+  abrirEditorPres(p.id);
+}
+
+
