@@ -18,6 +18,12 @@
 
 <img id="logo-pdf-data" src="logo.png" style="display:none" alt="">
 <div class="topbar">
+  <div style="position:relative;flex:1;max-width:320px">
+    <input id="global-search" type="text" placeholder="🔍 Buscar clientes, presupuestos, componentes..."
+      oninput="busquedaGlobal(this.value)"
+      style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface2);color:var(--text)">
+    <div id="search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:9999;max-height:320px;overflow-y:auto;margin-top:2px"></div>
+  </div>
   <div class="brand">
     <div class="brand-icon">🛡️</div>
     <div><div class="brand-name">Viking Security Systems</div><span class="brand-sub">Sistema Administrativo v1.0</span></div>

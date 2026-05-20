@@ -310,6 +310,21 @@ function verCliente(id){
 // =======================================================
 // SUB: DATOS
 // =======================================================
+
+function setEstadoInstalacion(id, estado){
+  var c = DB.clientes.find(function(x){return x.id===id;});
+  if(!c) return;
+  c.estadoInstalacion = estado;
+  save(); renderDatos();
+}
+
+function saveNotasCliente(id, texto){
+  var c = DB.clientes.find(function(x){return x.id===id;});
+  if(!c) return;
+  c.notas = texto;
+  save();
+}
+
 function renderDatos(){
   const c=gc();
   document.getElementById('cont-datos').innerHTML=`
@@ -318,7 +333,19 @@ function renderDatos(){
     <hr class="div">
     <div class="fgrid">${fbox('Modelo Zpro',mPill(c.modelo))}${fbox('Versión instalada',c.version,true)}${fbox('Fecha instalación',c.fecha)}</div>
     <hr class="div">
-    <div class="fgrid">${fbox('MAC del ESP32',c.mac,true)}${fbox('PIN OTA',c.pin?'••••••':'')}${fbox('Chat ID Telegram',c.chatid,true)}</div>`;
+    <div class="fgrid">${fbox('MAC del ESP32',c.mac,true)}${fbox('PIN OTA',c.pin?'••••••':'')}${fbox('Chat ID Telegram',c.chatid,true)}</div>
+    <hr class="div">
+    <div class="sectitle">Instalación y notas</div>
+    <div style="margin-top:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text2)">Estado:</span>
+        ${['Pendiente','En curso','Completada'].map(s=>
+          '<button onclick="setEstadoInstalacion('+c.id+',\''+s+'\')" style="padding:3px 10px;border-radius:12px;font-size:11px;border:1px solid var(--border);cursor:pointer;background:'+(c.estadoInstalacion===s?'var(--primary)':'var(--surface2)')+';color:'+(c.estadoInstalacion===s?'#fff':'var(--text)')+'">'+s+'</button>'
+        ).join('')}
+      </div>
+      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Notas internas</label>
+      <textarea onblur="saveNotasCliente(${c.id},this.value)" style="width:100%;min-height:70px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;font-family:inherit;background:var(--surface2);color:var(--text);resize:vertical">${c.notas||''}</textarea>
+    </div>`;
 }
 
 function editarDatos(){
@@ -1717,6 +1744,10 @@ function renderConfig(){
   h += cfgInp('Tipo de cambio U$S (referencia)','cfg-tipoCambio', cfg.tipoCambio||'1', '1300');
   h += cfgInp('Tipo de cambio U$S','cfg-tc', cfg.tipoCambio||1, '1', 'number');
   h += '</div>';
+  h += '<hr class="div"><div class="sectitle" style="margin-bottom:10px">Meta de facturación mensual</div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
+  h += cfgInp('Meta mensual ($)','cfg-meta-mensual', cfg.metaMensual||'0', 'Ej: 500000');
+  h += '</div>';
   h += '<div class="sectitle" style="margin-bottom:10px">Descripciones de modelos (aparecen en el PDF)</div>';
   h += cfgTxt('Zpro Base','cfg-desc-Base', cfg.desc_Base||'Activación y desactivación del sistema desde el celular, en cualquier momento y desde cualquier lugar. Notificaciones instantáneas ante cualquier evento de seguridad — apertura de puertas, ventanas o activación de sensores. Monitoreo del estado del sistema en tiempo real desde Telegram. Historial de eventos registrados con fecha y hora. Control mediante menú interactivo en Telegram — sin necesidad de aplicaciones adicionales. Compatible con sensores de puerta, ventana y botón de pánico. Sirena exterior de larga durabilidad y alta potencia sonora.');
   h += cfgTxt('Zpro Energy','cfg-desc-Energy', cfg.desc_Energy||'Activación y desactivación del sistema desde el celular, en cualquier momento y desde cualquier lugar. Notificaciones instantáneas ante cualquier evento de seguridad — apertura de puertas, ventanas o activación de sensores. Monitoreo del estado del sistema en tiempo real desde Telegram. Historial de eventos registrados con fecha y hora. Control mediante menú interactivo en Telegram — sin necesidad de aplicaciones adicionales. Compatible con sensores de puerta, ventana y botón de pánico. Sirena exterior de larga durabilidad y alta potencia sonora. Detección y notificación inmediata ante cortes de energía eléctrica. Batería de respaldo que mantiene el sistema activo sin suministro eléctrico. Monitoreo del nivel de carga de la batería con alertas cuando requiere atención.');
@@ -1747,6 +1778,7 @@ function saveConfig(){
   DB.config.web = g('cfg-web');
   DB.config.firma = g('cfg-firma');
   DB.config.tipoCambio = parseFloat(g('cfg-tipoCambio'))||1;
+  DB.config.metaMensual = parseFloat(g('cfg-meta-mensual'))||0;
   DB.config.tipoCambio = parseFloat(g('cfg-tc'))||1;
   DB.config.desc_Base = g('cfg-desc-Base');
   DB.config.desc_Energy = g('cfg-desc-Energy');
@@ -1802,6 +1834,12 @@ function reporteFinanciero(){
   var h='';
 
   // Stats
+  // Meta mensual
+  var metaCfg=(DB.config&&DB.config.metaMensual)||0;
+  var mesAct=hoy.slice(0,7);
+  var facMesAct=(DB.fondos||[]).filter(function(f){return f.tipo==='Ingreso'&&f.fecha&&f.fecha.slice(0,7)===mesAct;}).reduce(function(a,f){return a+(parseFloat(f.monto)||0);},0);
+  var pctMeta=metaCfg>0?Math.round(facMesAct/metaCfg*100):0;
+
   h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">';
   h+='<div class="stat"><div class="stat-n">$'+Math.round(totalSistemas).toLocaleString('es-AR')+'</div><div class="stat-l">Total facturado</div></div>';
   h+='<div class="stat"><div class="stat-n green">$'+Math.round(totalCobrado).toLocaleString('es-AR')+'</div><div class="stat-l">Total cobrado</div></div>';
@@ -2243,6 +2281,26 @@ function renderReportes(){
   }
   h += '</div></div>';
 
+  // 9. Vencimientos de garantía próximos 90 días
+  var hoy2 = today();
+  var en90 = new Date(Date.now()+90*86400000).toISOString().slice(0,10);
+  var vencProx = DB.clientes.filter(function(c){
+    return c.estado==='Activo' && c.equipo && c.equipo.ups_gar_vence &&
+           c.equipo.ups_gar_vence >= hoy2 && c.equipo.ups_gar_vence <= en90;
+  });
+
+  if(vencProx.length){
+    h += '<div class="card" style="margin-bottom:12px;border-left:3px solid #E65100"><div class="ch"><div class="ct">⏰ Garantías UPS por vencer (90 días)</div></div><div class="card-body">';
+    h += '<table style="width:100%;border-collapse:collapse">';
+    vencProx.forEach(function(c){
+      var dias=Math.round((new Date(c.equipo.ups_gar_vence)-new Date())/86400000);
+      h += '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 10px">'+c.nombre+'</td>'+
+        '<td style="padding:6px 10px;font-size:11px">'+c.lote+(c.barrio?' · '+c.barrio:'')+'</td>'+
+        '<td style="padding:6px 10px;font-weight:700;color:#E65100">'+c.equipo.ups_gar_vence+' ('+dias+' días)</td></tr>';
+    });
+    h += '</table></div></div>';
+  }
+
   el.innerHTML = h;
 }
 
@@ -2643,6 +2701,10 @@ function renderFondos(){
   var totalEgr = lista.filter(function(f){return f.tipo==='Egreso';}).reduce(function(a,f){return a+(parseFloat(f.monto)||0);},0);
   var saldo = totalIng - totalEgr;
 
+  var meta = (DB.config&&DB.config.metaMensual)||0;
+  var mesActual = today().slice(0,7);
+  var facMes = (DB.fondos||[]).filter(function(f){return f.tipo==='Ingreso'&&f.fecha&&f.fecha.slice(0,7)===mesActual;}).reduce(function(a,f){return a+(parseFloat(f.monto)||0);},0);
+
   h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'+
     '<div class="stat"><div class="stat-n green">$'+Math.round(totalIng).toLocaleString('es-AR')+'</div><div class="stat-l">Total ingresos</div></div>'+
     '<div class="stat"><div class="stat-n red">$'+Math.round(totalEgr).toLocaleString('es-AR')+'</div><div class="stat-l">Total egresos</div></div>'+
@@ -2820,6 +2882,71 @@ function pdfFondos(){
   w.document.close();
 }
 
+
+// BUSQUEDA GLOBAL ==========================================
+function busquedaGlobal(q){
+  if(!q||q.length<2) {
+    document.getElementById('search-results').innerHTML='';
+    document.getElementById('search-results').style.display='none';
+    return;
+  }
+  var ql = q.toLowerCase();
+  var results = [];
+
+  // Clientes
+  DB.clientes.forEach(function(c){
+    if((c.nombre+c.lote+c.barrio+c.tel+c.email+(c.mac||'')).toLowerCase().includes(ql)){
+      results.push({tipo:'Cliente',icon:'👤',label:c.nombre,sub:c.lote+(c.barrio?' · '+c.barrio:''),action:"goTo('clientes');setTimeout(function(){verCliente("+c.id+")},200)"});
+    }
+  });
+
+  // Presupuestos
+  DB.presupuestos.forEach(function(p){
+    if((p.nombre+(p.dir||'')+(p.tel||'')+(p.email||'')).toLowerCase().includes(ql)){
+      results.push({tipo:'Presupuesto',icon:'📄',label:presNum(p)+' — '+p.nombre,sub:p.estado+' · '+p.modelo,action:"abrirEditorPres("+p.id+")"});
+    }
+  });
+
+  // Proveedores
+  DB.proveedores.forEach(function(p){
+    if((p.empresa+(p.contacto||'')+(p.email||'')+(p.rubro||'')).toLowerCase().includes(ql)){
+      results.push({tipo:'Proveedor',icon:'🏭',label:p.empresa,sub:(p.rubro||'')+(p.contacto?' · '+p.contacto:''),action:"goTo('proveedores')"});
+    }
+  });
+
+  // Componentes
+  DB.componentes.forEach(function(c){
+    if((c.codigo+c.desc+(c.proveedor||'')).toLowerCase().includes(ql)){
+      results.push({tipo:'Componente',icon:'📦',label:c.codigo+' — '+c.desc,sub:(c.categoria||'')+(c.ubicacion?' · '+c.ubicacion:''),action:"goTo('catalogo')"});
+    }
+  });
+
+  var el = document.getElementById('search-results');
+  if(!results.length){
+    el.innerHTML='<div style="padding:10px 14px;color:var(--text2);font-size:12px">Sin resultados para "'+q+'"</div>';
+  } else {
+    el.innerHTML = results.slice(0,8).map(function(r,i){
+      return '<div id="sr'+i+'" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">'+
+        '<span style="font-size:16px">'+r.icon+'</span>'+
+        '<div><div style="font-size:12px;font-weight:600">'+r.label+'</div>'+
+        '<div style="font-size:10px;color:var(--text2)">'+r.tipo+' · '+r.sub+'</div></div>'+
+      '</div>';
+    }).join('');
+    results.slice(0,8).forEach(function(r,i){
+      var d=document.getElementById('sr'+i);
+      if(d){ (function(act){d.onclick=function(){eval(act);cerrarBusqueda();};})(r.action); }
+    });
+  }
+  el.style.display='block';
+}
+
+function cerrarBusqueda(){
+  var el=document.getElementById('search-results');
+  if(el){el.innerHTML='';el.style.display='none';}
+  var inp=document.getElementById('global-search');
+  if(inp) inp.value='';
+}
+
 // INIT
 // =======================================================
 goTo('clientes');
@@ -2909,6 +3036,16 @@ function calcTotal(p){
 }
 
 var _saveTimer=null;
+
+function trackEstadoPres(id, nuevoEstado){
+  var p = DB.presupuestos.find(function(x){return x.id===id;});
+  if(!p) return;
+  var prev = p.estado;
+  if(!p.historial) p.historial = [];
+  p.historial.push({fecha:today(), de:prev, a:nuevoEstado});
+  updPres(id, 'estado', nuevoEstado);
+}
+
 function updPres(id,campo,valor){
   const p=DB.presupuestos.find(function(x){return x.id===id;});
   if(!p) return;
@@ -3055,7 +3192,12 @@ function abrirEditorPres(id){
 
   openModal('Presupuesto '+presNum(p),
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">'+
-      sel('Estado','estado',['Borrador','Enviado','Aprobado','Rechazado'],p.estado)+
+      '<div class="fg" style="margin:0"><label>Estado</label>'+
+      '<select style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%"'+
+      ' data-pid="'+id+'" data-campo="estado"'+
+      ' onchange="trackEstadoPres('+id+',this.value)">'+
+      ['Borrador','Enviado','Aprobado','Rechazado'].map(function(o){return '<option'+(o===p.estado?' selected':'')+'>'+o+'</option>';}).join('')+
+      '</select></div>'+
       sel('Moneda','moneda',['ARS','USD'],p.moneda)+
       inp('Tipo de cambio','tipoCambio',p.tipoCambio,'number')+
     '</div>'+
