@@ -1359,6 +1359,32 @@ function getUbicDatalist(){
   return '<datalist id="dl-cp-ubic">'+opts+'</datalist>';
 }
 
+
+function calcPreciosComp(){
+  var tc=(DB.config&&DB.config.tipoCambio)||1;
+  var v=parseFloat(document.getElementById('cp-costo').value)||0;
+  var el=document.getElementById('cp-costo-usd');
+  if(el&&tc>0) el.value=(v/tc).toFixed(2);
+}
+function calcPreciosCompUSD(){
+  var tc=(DB.config&&DB.config.tipoCambio)||1;
+  var v=parseFloat(document.getElementById('cp-costo-usd').value)||0;
+  var el=document.getElementById('cp-costo');
+  if(el) el.value=Math.round(v*tc);
+}
+function calcPreciosVentaComp(){
+  var tc=(DB.config&&DB.config.tipoCambio)||1;
+  var v=parseFloat(document.getElementById('cp-venta').value)||0;
+  var el=document.getElementById('cp-venta-usd');
+  if(el&&tc>0) el.value=(v/tc).toFixed(2);
+}
+function calcPreciosVentaCompUSD(){
+  var tc=(DB.config&&DB.config.tipoCambio)||1;
+  var v=parseFloat(document.getElementById('cp-venta-usd').value)||0;
+  var el=document.getElementById('cp-venta');
+  if(el) el.value=Math.round(v*tc);
+}
+
 function modalComponente(id){
   const c=id>=0?DB.componentes.find(function(x){return x.id===id;}):null;
   const cats=[...new Set(DB.componentes.map(function(x){return x.categoria;}))].filter(Boolean);
@@ -1374,7 +1400,12 @@ function modalComponente(id){
         ['u','m','ml','kg','g','par','juego'].map(function(u){return '<option'+(c&&c.unidad===u?' selected':'')+'>'+u+'</option>';}).join('')+
       '</select></div>'+
       '<div class="fg"><label>Stock mínimo</label><input id="cp-min" type="number" min="0" value="'+(c?c.min||0:0)+'"></div>'+
-      '<div class="fg"><label>Precio de costo (ref.)</label><input id="cp-precio" type="number" min="0" value="'+(c?c.precio||0:0)+'"></div>'+
+      '<div class="fg full" style="grid-column:1/-1"><hr style="border:none;border-top:1px solid var(--border);margin:4px 0"></div>'+
+      '<div class="fg full"><div class="sectitle" style="margin:0 0 6px">Precios</div></div>'+
+      '<div class="fg"><label>Costo ($)</label><input id="cp-costo" type="number" min="0" value="'+(c?c.costo||c.precio||0:0)+'" oninput="calcPreciosComp()"></div>'+
+      '<div class="fg"><label>Costo (U$S)</label><input id="cp-costo-usd" type="number" min="0" step="0.01" value="'+(c&&(DB.config&&DB.config.tipoCambio)?((c.costo||c.precio||0)/(DB.config.tipoCambio||1)).toFixed(2):0)+'" oninput="calcPreciosCompUSD()"></div>'+
+      '<div class="fg"><label>Venta ($)</label><input id="cp-venta" type="number" min="0" value="'+(c?c.venta||0:0)+'" oninput="calcPreciosVentaComp()"></div>'+
+      '<div class="fg"><label>Venta (U$S)</label><input id="cp-venta-usd" type="number" min="0" step="0.01" value="'+(c&&(DB.config&&DB.config.tipoCambio)?((c.venta||0)/(DB.config.tipoCambio||1)).toFixed(2):0)+'" oninput="calcPreciosVentaCompUSD()"></div>'+
       '<div class="fg"><label>Proveedor</label><input id="cp-prov" value="'+(c?c.proveedor||'':'')+'" placeholder="Nombre del proveedor" list="dl-cp-prov">'+
       '<datalist id="dl-cp-prov">'+(DB.proveedores.map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join(''))+'</datalist></div>'+
       '<div class="fg"><label>Área *</label>'+
@@ -1393,7 +1424,11 @@ function modalComponente(id){
         c.codigo=cod;c.desc=desc;c.categoria=cat;
         c.unidad=document.getElementById('cp-uni').value;
         c.min=parseFloat(document.getElementById('cp-min').value)||0;
-        c.precio=parseFloat(document.getElementById('cp-precio').value)||0;
+        c.costo=parseFloat(document.getElementById('cp-costo').value)||0;
+        c.precio=c.costo; // backward compat
+        c.costo_usd=parseFloat(document.getElementById('cp-costo-usd').value)||0;
+        c.venta=parseFloat(document.getElementById('cp-venta').value)||0;
+        c.venta_usd=parseFloat(document.getElementById('cp-venta-usd').value)||0;
         c.area=document.getElementById('cp-area')?document.getElementById('cp-area').value:'Fábrica';
         c.proveedor=document.getElementById('cp-prov').value;
         c.ubicacion=document.getElementById('cp-ubic').value;
@@ -1674,16 +1709,17 @@ function eliminarOrden(id){
 function pdfOrden(id){
   const o=DB.ordenes.find(function(x){return x.id===id;});
   if(!o) return;
+  const tc=(DB.config&&DB.config.tipoCambio)||1;
   let rows='';
   o.items.forEach(function(item){
     const c=DB.componentes.find(function(x){return x.id===item.cid;})||{codigo:'?',desc:'?',unidad:'u',precio:0,ubicacion:''};
-    const sub=(c.precio||0)*item.cant;
+    const sub=(c.costo||c.precio||0)*item.cant;
     rows+='<tr><td>'+c.codigo+'</td><td>'+c.desc+'</td><td style="text-align:center">'+item.cant+' '+c.unidad+'</td>'+
-      '<td style="text-align:right">$'+Math.round(c.precio||0).toLocaleString('es-AR')+'</td>'+
+      '<td style="text-align:right">$'+Math.round(c.costo||c.precio||0).toLocaleString('es-AR')+'</td>'+
       '<td style="text-align:right">$'+Math.round(sub).toLocaleString('es-AR')+'</td>'+
       '<td>'+( c.ubicacion||'—')+'</td></tr>';
   });
-  const total=o.items.reduce(function(a,i){const c=DB.componentes.find(function(x){return x.id===i.cid;})||{precio:0};return a+(c.precio||0)*i.cant;},0);
+  const total=o.items.reduce(function(a,i){const c=DB.componentes.find(function(x){return x.id===i.cid;})||{costo:0,precio:0};return a+(c.costo||c.precio||0)*i.cant;},0);
   const w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden #'+o.id+'</title>'+
     '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Segoe UI,Arial,sans-serif;padding:28px;font-size:13px}'+
@@ -3111,6 +3147,81 @@ function cerrarBusqueda(){
   if(el){el.innerHTML='';el.style.display='none';}
   var inp=document.getElementById('global-search');
   if(inp) inp.value='';
+}
+
+
+function reporteStockPrecios(){
+  var tc=(DB.config&&DB.config.tipoCambio)||1;
+  var empresa=(DB.config&&DB.config.empresa)||'Viking Security Systems';
+  var list=DB.componentes.slice().sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');});
+
+  var totalCosto=0, totalVenta=0;
+  var rows=list.map(function(c){
+    var qty=stockActual(c.id);
+    var costo=parseFloat(c.costo||c.precio)||0;
+    var venta=parseFloat(c.venta)||0;
+    var subtotalCosto=qty*costo;
+    var subtotalVenta=qty*venta;
+    totalCosto+=subtotalCosto;
+    totalVenta+=subtotalVenta;
+    var critico=qty<=(parseFloat(c.min)||0);
+    return '<tr style="'+(critico?'background:#FFF3E0':'')+'">'+
+      '<td>'+c.codigo+'</td>'+
+      '<td>'+c.desc+'</td>'+
+      '<td>'+(c.categoria||'—')+'</td>'+
+      '<td style="text-align:center;font-weight:700;color:'+(critico?'#B71C1C':'#222')+'">'+qty+'</td>'+
+      '<td style="text-align:right">$'+Math.round(costo).toLocaleString('es-AR')+'</td>'+
+      '<td style="text-align:right;color:#666">'+(tc>1?'U$S '+(costo/tc).toFixed(2):'—')+'</td>'+
+      '<td style="text-align:right">$'+Math.round(venta).toLocaleString('es-AR')+'</td>'+
+      '<td style="text-align:right;color:#666">'+(tc>1?'U$S '+(venta/tc).toFixed(2):'—')+'</td>'+
+      '<td style="text-align:right">$'+Math.round(subtotalCosto).toLocaleString('es-AR')+'</td>'+
+      '<td style="text-align:right">$'+Math.round(subtotalVenta).toLocaleString('es-AR')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var margen=totalCosto>0?((totalVenta-totalCosto)/totalCosto*100).toFixed(1):0;
+
+  var css='*{box-sizing:border-box;margin:0;padding:0}body{font-family:Segoe UI,Arial,sans-serif;padding:20px;font-size:11px}'+
+    'h1{font-size:15px;color:#B71C1C;margin-bottom:2px}.meta{color:#666;font-size:10px;margin-bottom:12px}'+
+    '.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}'+
+    '.stat{background:#f5f5f5;border-radius:5px;padding:9px;text-align:center}'+
+    '.stat .n{font-size:13px;font-weight:700;margin-bottom:2px}.stat .l{font-size:9px;color:#888;text-transform:uppercase}'+
+    'table{width:100%;border-collapse:collapse}'+
+    'th{background:#B71C1C;color:#fff;padding:6px 8px;font-size:9px;text-align:left}'+
+    'td{padding:5px 8px;border-bottom:1px solid #eee}'+
+    'tfoot td{background:#222;color:#fff;font-weight:700;padding:7px 8px}'+
+    '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer}'+
+    '@media print{.btn{display:none}@page{margin:10mm}}';
+
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stock con precios</title><style>'+css+'</style></head><body>'+
+    '<button class="btn" onclick="window.print()">🖨️ Imprimir</button>'+
+    '<h1>STOCK CON PRECIOS DE COSTO Y VENTA</h1>'+
+    '<div class="meta">'+empresa+' · '+today()+(tc>1?' · TC U$S: $'+tc:'')+'</div>'+
+    '<div class="stats">'+
+      '<div class="stat"><div class="n">'+list.length+'</div><div class="l">Componentes</div></div>'+
+      '<div class="stat"><div class="n" style="color:#B71C1C">$'+Math.round(totalCosto).toLocaleString('es-AR')+'</div><div class="l">Valor a costo</div></div>'+
+      '<div class="stat"><div class="n" style="color:green">$'+Math.round(totalVenta).toLocaleString('es-AR')+'</div><div class="l">Valor a venta</div></div>'+
+      '<div class="stat"><div class="n">'+margen+'%</div><div class="l">Margen promedio</div></div>'+
+    '</div>'+
+    '<table><thead><tr>'+
+      '<th>Código</th><th>Descripción</th><th>Categoría</th>'+
+      '<th style="text-align:center">Stock</th>'+
+      '<th style="text-align:right">Costo $</th>'+
+      '<th style="text-align:right">Costo U$S</th>'+
+      '<th style="text-align:right">Venta $</th>'+
+      '<th style="text-align:right">Venta U$S</th>'+
+      '<th style="text-align:right">Total costo</th>'+
+      '<th style="text-align:right">Total venta</th>'+
+    '</tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '<tfoot><tr>'+
+      '<td colspan="8" style="text-align:right;padding:7px 8px">TOTALES</td>'+
+      '<td style="text-align:right;padding:7px 8px">$'+Math.round(totalCosto).toLocaleString('es-AR')+'</td>'+
+      '<td style="text-align:right;padding:7px 8px;color:#81C784">$'+Math.round(totalVenta).toLocaleString('es-AR')+'</td>'+
+    '</tr></tfoot></table>'+
+    '</body></html>');
+  w.document.close();
 }
 
 // INIT
