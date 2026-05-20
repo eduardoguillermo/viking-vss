@@ -1146,9 +1146,13 @@ function sortStock(col){
 function renderStock(){
   fillCatFilter('stock-cat-filter');
   const fcat=document.getElementById('stock-cat-filter').value;
-  let list=DB.componentes.filter(function(c){return !fcat||c.categoria===fcat;});
   const farea=document.getElementById('stock-area-filter')?document.getElementById('stock-area-filter').value:'';
-  if(farea) list=list.filter(function(c){return c.area===farea||c.area==='Ambas';});
+  const qs=(document.getElementById('q-stock')?document.getElementById('q-stock').value||'':'').toLowerCase();
+  let list=DB.componentes.filter(function(c){
+    return (!fcat||c.categoria===fcat) &&
+           (!farea||c.area===farea||c.area==='Ambas') &&
+           (!qs||(c.codigo+c.desc+(c.ubicacion||'')+(c.proveedor||'')).toLowerCase().includes(qs));
+  });
   if(stockSoloCritico) list=list.filter(function(c){return stockActual(c.id)<=(parseFloat(c.min)||0);});
 
   // Sort
