@@ -253,12 +253,12 @@
           <table>
             <colgroup><col style="width:7%"><col style="width:18%"><col style="width:10%"><col style="width:6%"><col style="width:5%"><col style="width:7%"><col style="width:8%"><col style="width:9%"><col style="width:11%"><col style="width:11%"></colgroup>
             <thead id="thead-cat"><tr>
-              <th data-sort="codigo" data-label="Código" onclick="sortCatalogo('codigo')" style="cursor:pointer">Código</th>
-              <th data-sort="desc" data-label="Descripción" onclick="sortCatalogo('desc')" style="cursor:pointer">Descripción ▲</th>
-              <th data-sort="categoria" data-label="Categoría" onclick="sortCatalogo('categoria')" style="cursor:pointer">Categoría</th>
+              <th id="th-codigo" onclick="sortCatalogo('codigo')" style="cursor:pointer;user-select:none">Código</th>
+              <th id="th-desc" onclick="sortCatalogo('desc')" style="cursor:pointer;user-select:none">Descripción ▲</th>
+              <th id="th-categoria" onclick="sortCatalogo('categoria')" style="cursor:pointer;user-select:none">Categoría</th>
               <th>Unidad</th><th>Mín.</th>
-              <th data-sort="stock" data-label="Stock" onclick="sortCatalogo('stock')" style="cursor:pointer">Stock</th>
-              <th data-sort="area" data-label="Área" onclick="sortCatalogo('area')" style="cursor:pointer">Área</th>
+              <th id="th-stock" onclick="sortCatalogo('stock')" style="cursor:pointer;user-select:none">Stock</th>
+              <th id="th-area" onclick="sortCatalogo('area')" style="cursor:pointer;user-select:none">Área</th>
               <th>Ubicación</th><th>Proveedor</th><th>Acciones</th>
             </tr></thead>
             <tbody id="tbody-cat"></tbody>

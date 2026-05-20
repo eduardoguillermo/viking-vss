@@ -1175,31 +1175,117 @@ function renderStock(){
 }
 
 // CAT=LOGO ============================================
+var _catSort = {col:'desc', dir:1};
+
 function renderCatalogo(){
   fillCatFilter('cat-filter');
   const q=(document.getElementById('q-cat').value||'').toLowerCase();
   const fc=document.getElementById('cat-filter').value;
-  const list=DB.componentes.filter(function(c){
-    return(!q||(c.codigo+c.desc+c.proveedor).toLowerCase().includes(q))&&(!fc||c.categoria===fc);
+  var list=DB.componentes.filter(function(c){
+    return(!q||(c.codigo+c.desc+(c.proveedor||'')+(c.ubicacion||'')+( c.categoria||'')).toLowerCase().includes(q))
+      &&(!fc||c.categoria===fc);
   });
+
+  // Sort
+  list.sort(function(a,b){
+    var va='', vb='';
+    if(_catSort.col==='desc'){va=a.desc||'';vb=b.desc||'';}
+    else if(_catSort.col==='codigo'){va=a.codigo||'';vb=b.codigo||'';}
+    else if(_catSort.col==='categoria'){va=a.categoria||'';vb=b.categoria||'';}
+    else if(_catSort.col==='area'){va=a.area||'';vb=b.area||'';}
+    else if(_catSort.col==='stock'){va=stockActual(a.id);vb=stockActual(b.id);return _catSort.dir*(va-vb);}
+    return _catSort.dir*va.localeCompare(vb);
+  });
+
   const tb=document.getElementById('tbody-cat');
-  if(!list.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin componentes registrados.</td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="9" class="empty">Sin componentes registrados.</td></tr>';return;}
+
   tb.innerHTML=list.map(function(c){
+    var qty=stockActual(c.id);
+    var min=parseFloat(c.min)||0;
+    var stockColor=qty<=0?'var(--red)':qty<=min?'#E65100':'var(--green)';
+    var stockIcon=qty<=0?'🔴':qty<=min?'🟡':'🟢';
     return '<tr>'+
       '<td style="font-family:monospace;font-size:11px">'+c.codigo+'</td>'+
       '<td>'+c.desc+'</td>'+
-      '<td>'+c.categoria+'</td>'+
-      '<td>'+c.unidad+'</td>'+
+      '<td>'+( c.categoria||'—')+'</td>'+
+      '<td>'+(c.unidad||'—')+'</td>'+
       '<td>'+(c.min||0)+'</td>'+
+      '<td style="font-weight:700;color:'+stockColor+'">'+stockIcon+' '+qty+'</td>'+
       '<td><span class="pill '+(c.area==='Mantenimiento'?'p-b':c.area==='Instalacion'?'p-a':c.area==='Ambas'?'p-p':'p-g')+'">'+(c.area||'Fábrica')+'</span></td>'+
       '<td>'+(c.ubicacion||'—')+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
-      '<td style="display:flex;gap:4px">'+
-        '<button class="btn btn-sm" onclick="modalComponente('+c.id+')">✏️</button>'+
-        '<button class="btn btn-sm" style="color:var(--red)" onclick="eliminarComponente('+c.id+')">🗑️</button>'+
+      '<td style="display:flex;gap:3px">'+
+        '<button class="btn btn-sm" onclick="modalComponente('+c.id+')" title="Editar">✏️</button>'+
+        '<button class="btn btn-sm" onclick="duplicarComponente('+c.id+')" title="Duplicar">📋</button>'+
+        '<button class="btn btn-sm" style="color:var(--red)" onclick="eliminarComponente('+c.id+')" title="Eliminar">🗑️</button>'+
       '</td>'+
     '</tr>';
   }).join('');
+
+  // Update sort indicators on headers
+  var cols = {codigo:'Código',desc:'Descripción',categoria:'Categoría',stock:'Stock',area:'Área'};
+  Object.keys(cols).forEach(function(col){
+    var th = document.getElementById('th-'+col);
+    if(!th) return;
+    th.innerHTML = cols[col] + (col===_catSort.col?(_catSort.dir===1?' ▲':' ▼'):'');
+  });
+}
+
+function sortCatalogo(col){
+  if(_catSort.col===col) _catSort.dir*=-1;
+  else { _catSort.col=col; _catSort.dir=1; }
+  renderCatalogo();
+}
+
+function duplicarComponente(id){
+  var c=DB.componentes.find(function(x){return x.id===id;});
+  if(!c) return;
+  var nuevo=Object.assign({},c,{id:DB.nid++,codigo:c.codigo+'-2',desc:'Copia de '+c.desc});
+  DB.componentes.push(nuevo);
+  save(); renderCatalogo();
+  // Open edit modal for the new component
+  modalComponente(nuevo.id);
+}
+
+function pdfCatalogo(){
+  var empresa=(DB.config&&DB.config.empresa)||'Viking Security Systems';
+  var q=(document.getElementById('q-cat')?document.getElementById('q-cat').value||'':'').toLowerCase();
+  var fc=document.getElementById('cat-filter')?document.getElementById('cat-filter').value:'';
+  var list=DB.componentes.filter(function(c){
+    return(!q||(c.codigo+c.desc+(c.proveedor||'')).toLowerCase().includes(q))&&(!fc||c.categoria===fc);
+  }).sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');});
+
+  var rows=list.map(function(c){
+    var qty=stockActual(c.id);
+    var min=parseFloat(c.min)||0;
+    var critico=qty<=min;
+    return '<tr style="'+(critico?'background:#FFF3E0':'')+'">'+
+      '<td>'+c.codigo+'</td><td>'+c.desc+'</td><td>'+(c.categoria||'—')+'</td>'+
+      '<td>'+(c.area||'—')+'</td><td>'+(c.ubicacion||'—')+'</td>'+
+      '<td style="text-align:center;font-weight:700;color:'+(critico?'#B71C1C':'#222')+'">'+qty+'</td>'+
+      '<td style="text-align:center">'+(c.min||0)+'</td>'+
+      '<td>'+(c.proveedor||'—')+'</td>'+
+      '<td style="text-align:right">$'+Math.round(parseFloat(c.precio)||0).toLocaleString('es-AR')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var css='*{box-sizing:border-box;margin:0;padding:0}body{font-family:Segoe UI,Arial,sans-serif;padding:20px;font-size:11px}'+
+    'h1{font-size:15px;color:#B71C1C;margin-bottom:2px}.meta{color:#666;font-size:10px;margin-bottom:12px}'+
+    'table{width:100%;border-collapse:collapse}th{background:#B71C1C;color:#fff;padding:6px 8px;font-size:10px;text-align:left}'+
+    'td{padding:5px 8px;border-bottom:1px solid #eee}'+
+    '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer}'+
+    '@media print{.btn{display:none}}';
+
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Catálogo</title><style>'+css+'</style></head><body>'+
+    '<button class="btn" onclick="window.print()">🖨️ Imprimir</button>'+
+    '<h1>CATÁLOGO DE COMPONENTES</h1>'+
+    '<div class="meta">'+empresa+' · '+today()+'</div>'+
+    '<table><thead><tr><th>Código</th><th>Descripción</th><th>Categoría</th><th>Área</th><th>Ubicación</th>'+
+    '<th style="text-align:center">Stock</th><th style="text-align:center">Mín.</th><th>Proveedor</th><th style="text-align:right">Precio</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></body></html>');
+  w.document.close();
 }
 
 
