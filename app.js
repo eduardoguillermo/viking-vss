@@ -2154,7 +2154,7 @@ function renderProveedores(){
       '<td><strong>'+p.empresa+'</strong></td>'+
       '<td>'+(p.contacto||'—')+'</td>'+
       '<td>'+(p.tel||'—')+'</td>'+
-      '<td>'+(p.email||'—')+'</td>'+
+      '<td>'+(p.email||'—')+'</td>'+'<td>'+(p.web||'—')+'</td>'+
       '<td>'+(p.rubro||'—')+'</td>'+
       '<td style="font-size:11px">'+(p.condiciones||'—')+'</td>'+
       '<td style="display:flex;gap:4px">'+
@@ -2193,7 +2193,8 @@ function modalProveedor(idx){
         email:document.getElementById('pv-email').value,
         dir:document.getElementById('pv-dir').value,
         condiciones:document.getElementById('pv-cond').value,
-        obs:document.getElementById('pv-obs').value
+        obs:document.getElementById('pv-obs').value,
+        web:document.getElementById('pv-web').value
       };
       if(idx>=0) DB.proveedores[idx]=obj;
       else DB.proveedores.push(obj);
