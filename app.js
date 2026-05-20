@@ -2178,6 +2178,7 @@ function modalProveedor(idx){
     '<div class="fg"><label>Teléfono</label><input id="pv-tel" value="'+(p.tel||'')+'"></div>'+
     '<div class="fg"><label>Email</label><input id="pv-email" type="email" value="'+(p.email||'')+'"></div>'+
     '<div class="fg"><label>Dirección</label><input id="pv-dir" value="'+(p.dir||'')+'"></div>'+
+    '<div class="fg"><label>Sitio web</label><input id="pv-web" value="'+(p.web||'')+'" placeholder="www.proveedor.com"></div>'+
     '<div class="fg" style="grid-column:1/-1"><label>Condiciones comerciales</label><input id="pv-cond" value="'+(p.condiciones||'')+'" placeholder="Ej: 30 días, pago con transferencia..."></div>'+
     '<div class="fg" style="grid-column:1/-1"><label>Observaciones</label><textarea id="pv-obs" style="min-height:50px;padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%;font-family:inherit">'+(p.obs||'')+'</textarea></div>'+
     '</div>',
