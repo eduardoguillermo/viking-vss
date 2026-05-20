@@ -1546,17 +1546,30 @@ function generarOrdenAutomatica(){
     return stockActual(c.id)<=(parseFloat(c.min)||0);
   });
   if(!criticos.length){alert('No hay componentes por debajo del stock mínimo.');return;}
-  const items=criticos.map(function(c){
-    const faltante=Math.max(0,(parseFloat(c.min)||0)-stockActual(c.id));
-    return {cid:c.id, cant:faltante+Math.ceil((parseFloat(c.min)||1))};
+
+  // Group by proveedor
+  var porProv = {};
+  criticos.forEach(function(c){
+    var prov = c.proveedor||'Sin proveedor';
+    if(!porProv[prov]) porProv[prov]=[];
+    var faltante=Math.max(1,(parseFloat(c.min)||1)-stockActual(c.id)+Math.ceil((parseFloat(c.min)||1)));
+    porProv[prov].push({cid:c.id, cant:faltante});
   });
-  const o={
-    id:DB.nid++, fecha:today(), estado:'Pendiente',
-    items:items, proveedor:'', obs:'Generada automáticamente por stock crítico'
-  };
-  DB.ordenes.unshift(o);
-  save();renderOrdenes();
-  alert('✔ Orden generada con '+items.length+' componente'+(items.length!==1?'s':'')+' crítico'+(items.length!==1?'s':'')+'.');
+
+  var count = Object.keys(porProv).length;
+  if(!confirm('Se generarán '+count+' orden'+(count>1?'es':'')+' de compra (una por proveedor). ¿Continuar?')) return;
+
+  Object.entries(porProv).forEach(function(entry){
+    var prov=entry[0], items=entry[1];
+    DB.ordenes.unshift({
+      id:DB.nid++, fecha:today(), estado:'Pendiente',
+      items:items, proveedor:prov,
+      obs:'Generada automáticamente — stock crítico'
+    });
+  });
+
+  save(); renderOrdenes();
+  alert('Se generaron '+count+' orden'+(count>1?'es':'')+' de compra por proveedor.');
 }
 
 function modalOrden(){
