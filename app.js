@@ -2484,8 +2484,10 @@ function renderFondos(){
   if(!el) return;
   var tc = (DB.config&&DB.config.tipoCambio)||1;
 
-  var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
-    '<div style="display:flex;gap:8px">'+
+  var hoy = today();
+  var primerDiaMes = hoy.slice(0,7)+'-01';
+  var h = '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
       '<select id="ff-tipo" onchange="renderFondos()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
         '<option value="">Todos</option><option>Ingreso</option><option>Egreso</option>'+
       '</select>'+
@@ -2494,6 +2496,11 @@ function renderFondos(){
         RUBROS_ING.map(function(r){return '<option>'+r+'</option>';}).join('')+
         RUBROS_EGR.map(function(r){return '<option>'+r+'</option>';}).join('')+
       '</select>'+
+      '<label style="font-size:11px;color:var(--text2)">Desde</label>'+
+      '<input id="ff-desde" type="date" value="'+(document.getElementById('ff-desde')?document.getElementById('ff-desde').value:primerDiaMes)+'" onchange="renderFondos()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
+      '<label style="font-size:11px;color:var(--text2)">Hasta</label>'+
+      '<input id="ff-hasta" type="date" value="'+(document.getElementById('ff-hasta')?document.getElementById('ff-hasta').value:hoy)+'" onchange="renderFondos()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
+      '<button class="btn btn-sm" onclick="limpiarFiltrosFondos()">✕ Limpiar</button>'+
     '</div>'+
     '<div style="display:flex;gap:8px">'+
       '<button class="btn btn-sm" onclick="pdfFondos()">🖨️ PDF</button>'+
@@ -2503,14 +2510,19 @@ function renderFondos(){
 
   var ftipo = document.getElementById('ff-tipo')?document.getElementById('ff-tipo').value:'';
   var frubro = document.getElementById('ff-rubro')?document.getElementById('ff-rubro').value:'';
+  var fdesde = document.getElementById('ff-desde')?document.getElementById('ff-desde').value:'';
+  var fhasta = document.getElementById('ff-hasta')?document.getElementById('ff-hasta').value:'';
 
   var lista = (DB.fondos||[]).filter(function(f){
-    return (!ftipo||f.tipo===ftipo) && (!frubro||f.rubro===frubro);
+    return (!ftipo||f.tipo===ftipo) &&
+           (!frubro||f.rubro===frubro) &&
+           (!fdesde||f.fecha>=fdesde) &&
+           (!fhasta||f.fecha<=fhasta);
   }).sort(function(a,b){ return a.fecha > b.fecha ? -1 : 1; });
 
   // Totals
-  var totalIng = (DB.fondos||[]).filter(function(f){return f.tipo==='Ingreso';}).reduce(function(a,f){return a+(parseFloat(f.monto)||0);},0);
-  var totalEgr = (DB.fondos||[]).filter(function(f){return f.tipo==='Egreso';}).reduce(function(a,f){return a+(parseFloat(f.monto)||0);},0);
+  var totalIng = lista.filter(function(f){return f.tipo==='Ingreso';}).reduce(function(a,f){return a+(parseFloat(f.monto)||0);},0);
+  var totalEgr = lista.filter(function(f){return f.tipo==='Egreso';}).reduce(function(a,f){return a+(parseFloat(f.monto)||0);},0);
   var saldo = totalIng - totalEgr;
 
   h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'+
@@ -2559,6 +2571,17 @@ function renderFondos(){
   });
   h += '</tbody></table>';
   el.innerHTML = h;
+}
+
+function limpiarFiltrosFondos(){
+  var hoy = today();
+  var primerDiaMes = hoy.slice(0,7)+'-01';
+  var el;
+  el=document.getElementById('ff-tipo'); if(el) el.value='';
+  el=document.getElementById('ff-rubro'); if(el) el.value='';
+  el=document.getElementById('ff-desde'); if(el) el.value=primerDiaMes;
+  el=document.getElementById('ff-hasta'); if(el) el.value=hoy;
+  renderFondos();
 }
 
 function modalFondo(id){
