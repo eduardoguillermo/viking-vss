@@ -1815,6 +1815,22 @@ function enviarEmailPres(id){
 // =======================================================
 
 // CONFIGURACION ============================================
+
+function resetearContadores(){
+  if(!confirm('¿Reiniciar todos los contadores? Los números de OC y presupuestos volverán a empezar desde 1.')) return;
+  if(!confirm('Última confirmación. Esta acción no se puede deshacer.')) return;
+  DB.nid = 1;
+  // Reset OC numbers
+  DB.ordenes.forEach(function(o,i){ o.id = i+1; });
+  // Reset presupuesto correlativos
+  DB.presupuestos.forEach(function(p,i){ p.correlativo = i+1; });
+  if(DB.ordenes.length) DB.nid = Math.max(DB.nid, DB.ordenes.length+1);
+  if(DB.presupuestos.length) DB.nid = Math.max(DB.nid, DB.presupuestos.length+1);
+  save();
+  renderConfig();
+  alert('Contadores reiniciados correctamente.');
+}
+
 function renderConfig(){
   var cfg = DB.config || {};
   var el = document.getElementById('config-body');
@@ -1832,9 +1848,15 @@ function renderConfig(){
   h += '</div>';
   h += '<hr class="div"><div class="sectitle" style="margin-bottom:10px">Meta de facturación mensual</div>';
   h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
-  h += cfgInp('Meta mensual ($)','cfg-meta-mensual', cfg.metaMensual||'0', 'Ej: 500000');
+  h += cfgInp('Meta mensual ($)','cfg-meta-mensual', cfg.metaMensual?Number(cfg.metaMensual).toLocaleString('es-AR'):'0', 'Ej: 500.000');
   h += '</div>';
   h += '<div class="sectitle" style="margin-bottom:10px">Descripciones de modelos (aparecen en el PDF)</div>';
+  h += '<hr class="div">';
+  h += '<div class="sectitle" style="margin-bottom:10px">Contadores</div>';
+  h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">';
+  h += '<div style="font-size:12px;color:var(--text2)">Numeración actual: OC #'+DB.ordenes.length+' · Presupuestos: '+DB.presupuestos.length+' · ID interno: '+DB.nid+'</div>';
+  h += '<button class="btn btn-d" onclick="resetearContadores()" style="font-size:12px">🔄 Reiniciar contadores</button>';
+  h += '</div>';
   h += cfgTxt('Zpro Base','cfg-desc-Base', cfg.desc_Base||'Activación y desactivación del sistema desde el celular, en cualquier momento y desde cualquier lugar. Notificaciones instantáneas ante cualquier evento de seguridad — apertura de puertas, ventanas o activación de sensores. Monitoreo del estado del sistema en tiempo real desde Telegram. Historial de eventos registrados con fecha y hora. Control mediante menú interactivo en Telegram — sin necesidad de aplicaciones adicionales. Compatible con sensores de puerta, ventana y botón de pánico. Sirena exterior de larga durabilidad y alta potencia sonora.');
   h += cfgTxt('Zpro Energy','cfg-desc-Energy', cfg.desc_Energy||'Activación y desactivación del sistema desde el celular, en cualquier momento y desde cualquier lugar. Notificaciones instantáneas ante cualquier evento de seguridad — apertura de puertas, ventanas o activación de sensores. Monitoreo del estado del sistema en tiempo real desde Telegram. Historial de eventos registrados con fecha y hora. Control mediante menú interactivo en Telegram — sin necesidad de aplicaciones adicionales. Compatible con sensores de puerta, ventana y botón de pánico. Sirena exterior de larga durabilidad y alta potencia sonora. Detección y notificación inmediata ante cortes de energía eléctrica. Batería de respaldo que mantiene el sistema activo sin suministro eléctrico. Monitoreo del nivel de carga de la batería con alertas cuando requiere atención.');
   h += cfgTxt('Zpro Comfort','cfg-desc-Comfort', cfg.desc_Comfort||'Activación y desactivación del sistema desde el celular, en cualquier momento y desde cualquier lugar. Notificaciones instantáneas ante cualquier evento de seguridad — apertura de puertas, ventanas o activación de sensores. Monitoreo del estado del sistema en tiempo real desde Telegram. Historial de eventos registrados con fecha y hora. Control mediante menú interactivo en Telegram — sin necesidad de aplicaciones adicionales. Compatible con sensores de puerta, ventana y botón de pánico. Sirena exterior de larga durabilidad y alta potencia sonora. Detección y notificación inmediata ante cortes de energía eléctrica. Batería de respaldo que mantiene el sistema activo sin suministro eléctrico. Monitoreo del nivel de carga de la batería con alertas cuando requiere atención. Control de luces Zigbee integrado al sistema de seguridad. Activación automática de luces ante detección de alarma. Automatización por horario o evento. Control de cargas eléctricas mediante relés.');
@@ -1864,7 +1886,7 @@ function saveConfig(){
   DB.config.web = g('cfg-web');
   DB.config.firma = g('cfg-firma');
   DB.config.tipoCambio = parseFloat(g('cfg-tipoCambio'))||1;
-  DB.config.metaMensual = parseFloat(g('cfg-meta-mensual'))||0;
+  DB.config.metaMensual = parseFloat((g('cfg-meta-mensual')||'0').replace(/\./g,'').replace(',','.'))||0;
   DB.config.tipoCambio = parseFloat(g('cfg-tc'))||1;
   DB.config.desc_Base = g('cfg-desc-Base');
   DB.config.desc_Energy = g('cfg-desc-Energy');
