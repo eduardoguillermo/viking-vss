@@ -12,7 +12,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Viking Security Systems</title>
-<link rel="stylesheet" href="app.css?v=202605201421">
+
 </head>
 <body>
 
@@ -436,6 +436,16 @@
 
 <div id="mbox"></div>
 
-<script src="app.js?v=202605201421"></script>
+<script>
+(function(){
+  var v = Date.now();
+  var css = document.createElement('link');
+  css.rel = 'stylesheet'; css.href = 'app.css?v=' + v;
+  document.head.appendChild(css);
+  var js = document.createElement('script');
+  js.src = 'app.js?v=' + v;
+  document.head.appendChild(js);
+})();
+</script>
 </body>
 </html>
