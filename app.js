@@ -2526,6 +2526,7 @@ function renderFondos(){
     '<th style="width:80px">Tipo</th>'+
     '<th>Rubro</th>'+
     '<th>Descripción</th>'+
+    '<th>Cliente/Proveedor</th>'+
     '<th style="text-align:right">Monto $</th>'+
     '<th style="text-align:right">Monto U$S</th>'+
     '<th style="width:70px"></th>'+
@@ -2539,6 +2540,12 @@ function renderFondos(){
       '<td><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:'+(esIng?'#1B5E20':'#B71C1C')+';color:#fff">'+f.tipo+'</span></td>'+
       '<td style="font-size:11px">'+f.rubro+'</td>'+
       '<td style="font-size:11px">'+(f.desc||'—')+'</td>'+
+      '<td style="font-size:11px">'+(function(){
+        if(!f.vinculo) return '—';
+        if(f.vinculo.startsWith('cli:')){var c=DB.clientes.find(function(x){return x.id===parseInt(f.vinculo.slice(4));});return c?c.nombre:'—';}
+        if(f.vinculo.startsWith('prov:')){var p=DB.proveedores.find(function(x){return x.id===parseInt(f.vinculo.slice(5));});return p?p.empresa:'—';}
+        return '—';
+      })()+'</td>'+
       '<td style="text-align:right;font-weight:700;color:'+(esIng?'var(--green)':'var(--red)')+'">$'+Math.round(parseFloat(f.monto)||0).toLocaleString('es-AR')+'</td>'+
       '<td style="text-align:right;font-size:11px;color:var(--text2)">'+(usd?'U$S '+usd.toFixed(0):'—')+'</td>'+
       '<td style="display:flex;gap:3px">'+
@@ -2570,6 +2577,12 @@ function modalFondo(id){
       '</select></div>'+
     '<div class="fg"><label>Monto ($) *</label><input id="fo-monto" type="number" min="0" value="'+(f?f.monto:0)+'"></div>'+
     '<div class="fg"><label>Descripción</label><input id="fo-desc" value="'+(f?f.desc||'':'')+'" placeholder="Detalle opcional"></div>'+
+    '<div class="fg" style="grid-column:1/-1"><label>Cliente / Proveedor</label>'+
+      '<select id="fo-vinculo" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+        '<option value="">— sin vincular —</option>'+
+        '<optgroup label="Clientes">'+DB.clientes.filter(function(c){return c.estado==='Activo';}).map(function(c){return '<option value="cli:'+c.id+'"'+(f&&f.vinculo==='cli:'+c.id?' selected':'')+'>'+c.nombre+'</option>';}).join('')+'</optgroup>'+
+        '<optgroup label="Proveedores">'+DB.proveedores.map(function(p){return '<option value="prov:'+p.id+'"'+(f&&f.vinculo==='prov:'+p.id?' selected':'')+'>'+p.empresa+'</option>';}).join('')+'</optgroup>'+
+      '</select></div>'+
     '</div>',
     function(){
       var tipo=document.getElementById('fo-tipo').value;
@@ -2581,7 +2594,8 @@ function modalFondo(id){
         fecha:document.getElementById('fo-fecha').value,
         rubro:document.getElementById('fo-rubro').value,
         monto:monto,
-        desc:document.getElementById('fo-desc').value
+        desc:document.getElementById('fo-desc').value,
+        vinculo:document.getElementById('fo-vinculo').value
       };
       if(f){ var idx=DB.fondos.findIndex(function(x){return x.id===f.id;}); DB.fondos[idx]=obj; }
       else DB.fondos.unshift(obj);
@@ -2621,6 +2635,12 @@ function pdfFondos(){
       '<td><strong style="color:'+(esIng?'green':'#B71C1C')+'">'+f.tipo+'</strong></td>'+
       '<td>'+f.rubro+'</td>'+
       '<td>'+(f.desc||'—')+'</td>'+
+      '<td>'+(function(){
+        if(!f.vinculo) return '—';
+        if(f.vinculo.startsWith('cli:')){var c=DB.clientes.find(function(x){return x.id===parseInt(f.vinculo.slice(4));});return c?c.nombre:'—';}
+        if(f.vinculo.startsWith('prov:')){var p=DB.proveedores.find(function(x){return x.id===parseInt(f.vinculo.slice(5));});return p?p.empresa:'—';}
+        return '—';
+      })()+'</td>'+
       '<td style="text-align:right;color:'+(esIng?'green':'#B71C1C')+'">$'+Math.round(parseFloat(f.monto)||0).toLocaleString('es-AR')+'</td>'+
       '<td style="text-align:right;color:#666">'+(usd?'U$S '+usd.toFixed(0):'—')+'</td>'+
     '</tr>';
@@ -2647,7 +2667,7 @@ function pdfFondos(){
       '<div class="stat"><div class="n" style="color:#B71C1C">$'+Math.round(totalEgr).toLocaleString('es-AR')+'</div><div class="l">Total egresos</div></div>'+
       '<div class="stat"><div class="n" style="color:'+(saldo>=0?'green':'#B71C1C')+'">$'+Math.round(saldo).toLocaleString('es-AR')+'</div><div class="l">Saldo</div></div>'+
     '</div>'+
-    '<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Rubro</th><th>Descripción</th><th style="text-align:right">Monto $</th><th style="text-align:right">Monto U$S</th></tr></thead>'+
+    '<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Rubro</th><th>Descripción</th><th>Cliente/Proveedor</th><th style="text-align:right">Monto $</th><th style="text-align:right">Monto U$S</th></tr></thead>'+
     '<tbody>'+rows+'</tbody>'+
     '<tfoot><tr><td colspan="4">TOTALES</td>'+
       '<td style="text-align:right">Ing: $'+Math.round(totalIng).toLocaleString('es-AR')+' / Egr: $'+Math.round(totalEgr).toLocaleString('es-AR')+'</td>'+
