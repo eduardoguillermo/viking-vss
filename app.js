@@ -1135,6 +1135,14 @@ function pdfStock(){
   w.document.close();
 }
 
+var _stockSort = {col:'desc', dir:1};
+
+function sortStock(col){
+  if(_stockSort.col===col) _stockSort.dir*=-1;
+  else { _stockSort.col=col; _stockSort.dir=1; }
+  renderStock();
+}
+
 function renderStock(){
   fillCatFilter('stock-cat-filter');
   const fcat=document.getElementById('stock-cat-filter').value;
@@ -1142,6 +1150,18 @@ function renderStock(){
   const farea=document.getElementById('stock-area-filter')?document.getElementById('stock-area-filter').value:'';
   if(farea) list=list.filter(function(c){return c.area===farea||c.area==='Ambas';});
   if(stockSoloCritico) list=list.filter(function(c){return stockActual(c.id)<=(parseFloat(c.min)||0);});
+
+  // Sort
+  list.sort(function(a,b){
+    var va='', vb='';
+    if(_stockSort.col==='desc'){va=a.desc||'';vb=b.desc||'';}
+    else if(_stockSort.col==='codigo'){va=a.codigo||'';vb=b.codigo||'';}
+    else if(_stockSort.col==='categoria'){va=a.categoria||'';vb=b.categoria||'';}
+    else if(_stockSort.col==='area'){va=a.area||'';vb=b.area||'';}
+    else if(_stockSort.col==='ubicacion'){va=a.ubicacion||'';vb=b.ubicacion||'';}
+    else if(_stockSort.col==='cant'){va=stockActual(a.id);vb=stockActual(b.id);return _stockSort.dir*(va-vb);}
+    return _stockSort.dir*va.localeCompare(vb);
+  });
 
   const total=DB.componentes.length;
   const criticos=DB.componentes.filter(function(c){return stockActual(c.id)<=(parseFloat(c.min)||0)&&stockActual(c.id)>=0;}).length;
@@ -1172,6 +1192,14 @@ function renderStock(){
       '</td>'+
     '</tr>';
   }).join('');
+
+  // Update sort indicators
+  var scols = {codigo:'Código',desc:'Descripción',categoria:'Categoría',cant:'Cantidad',area:'Área',ubicacion:'Ubicación'};
+  Object.keys(scols).forEach(function(col){
+    var th = document.getElementById('sth-'+col);
+    if(!th) return;
+    th.innerHTML = scols[col] + (col===_stockSort.col?(_stockSort.dir===1?' ▲':' ▼'):'');
+  });
 }
 
 // CAT=LOGO ============================================

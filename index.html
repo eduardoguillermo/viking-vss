@@ -231,7 +231,17 @@
         <div class="twrap">
           <table>
             <colgroup><col style="width:8%"><col style="width:28%"><col style="width:12%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:12%"><col style="width:10%"></colgroup>
-            <thead><tr><th>Código</th><th>Componente</th><th>Categoría</th><th>Stock</th><th>Mínimo</th><th>Ubicación</th><th>Proveedor</th><th>Acciones</th></tr></thead>
+            <thead><tr>
+              <th id="sth-codigo" onclick="sortStock('codigo')" style="cursor:pointer;user-select:none">Código</th>
+              <th id="sth-desc" onclick="sortStock('desc')" style="cursor:pointer;user-select:none">Descripción ▲</th>
+              <th id="sth-categoria" onclick="sortStock('categoria')" style="cursor:pointer;user-select:none">Categoría</th>
+              <th id="sth-cant" onclick="sortStock('cant')" style="cursor:pointer;user-select:none">Stock</th>
+              <th>Mínimo</th>
+              <th id="sth-ubicacion" onclick="sortStock('ubicacion')" style="cursor:pointer;user-select:none">Ubicación</th>
+              <th>Proveedor</th>
+              <th id="sth-area" onclick="sortStock('area')" style="cursor:pointer;user-select:none">Área</th>
+              <th>Acciones</th>
+            </tr></thead>
             <tbody id="tbody-stock"></tbody>
           </table>
         </div>
