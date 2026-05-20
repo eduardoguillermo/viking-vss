@@ -210,6 +210,11 @@ setTimeout(function(){
   btnExp.textContent = 'Exportar ahora';
   btnExp.style.cssText = 'background:#fff;color:#B71C1C;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700';
   btnExp.onclick = function(){ exportarJSON(); document.getElementById('backup-banner').remove(); };
+  var btnDrive = document.createElement('button');
+  btnDrive.textContent = '☁️ Drive';
+  btnDrive.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
+  btnDrive.onclick = function(){ exportarADrive(); document.getElementById('backup-banner').remove(); };
+  btns.appendChild(btnDrive);
   var btnCer = document.createElement('button');
   btnCer.textContent = 'Cerrar';
   btnCer.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
@@ -265,6 +270,11 @@ setTimeout(function(){
   btnExp.textContent = 'Exportar ahora';
   btnExp.style.cssText = 'background:#fff;color:#B71C1C;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700';
   btnExp.onclick = function(){ exportarJSON(); document.getElementById('backup-banner').remove(); };
+  var btnDrive = document.createElement('button');
+  btnDrive.textContent = '☁️ Drive';
+  btnDrive.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
+  btnDrive.onclick = function(){ exportarADrive(); document.getElementById('backup-banner').remove(); };
+  btns.appendChild(btnDrive);
   var btnCer = document.createElement('button');
   btnCer.textContent = 'Cerrar';
   btnCer.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
@@ -676,8 +686,31 @@ function exportarJSON(){
   const blob=new Blob([json],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download=`viking_backup_${fecha}.json`;a.click();
+  a.href=url;a.download='viking_backup_'+fecha+'.json';a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportarADrive(){
+  const fecha=today();
+  const json=JSON.stringify(DB,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const file=new File([blob],'viking_backup_'+fecha+'.json',{type:'application/json'});
+  // Use Web Share API if available (Android/mobile)
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({
+      files:[file],
+      title:'Viking Backup '+fecha,
+      text:'Backup del sistema Viking Security Systems'
+    }).then(function(){
+      alert('Archivo compartido. Seleccioná Google Drive como destino.');
+    }).catch(function(e){
+      if(e.name!=='AbortError') exportarJSON(); // fallback
+    });
+  } else {
+    // Desktop fallback - download and show instructions
+    exportarJSON();
+    alert('En PC: el archivo se descargó. Subilo manualmente a Google Drive.\nEn Android: usá el botón "Compartir" del archivo descargado y seleccioná Drive.');
+  }
 }
 
 function importarJSON(){
@@ -3237,6 +3270,11 @@ setTimeout(function(){
   btnExp.textContent = 'Exportar ahora';
   btnExp.style.cssText = 'background:#fff;color:#B71C1C;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700';
   btnExp.onclick = function(){ exportarJSON(); document.getElementById('backup-banner').remove(); };
+  var btnDrive = document.createElement('button');
+  btnDrive.textContent = '☁️ Drive';
+  btnDrive.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
+  btnDrive.onclick = function(){ exportarADrive(); document.getElementById('backup-banner').remove(); };
+  btns.appendChild(btnDrive);
   var btnCer = document.createElement('button');
   btnCer.textContent = 'Cerrar';
   btnCer.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
