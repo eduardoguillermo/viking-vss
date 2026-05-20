@@ -2113,6 +2113,155 @@ function reporteOTA(){
   reporteContainer('📡 Firmware instalado por cliente', h);
 }
 
+
+// REPORTE: Estado de instalaciones ========================
+function reporteInstalaciones(){
+  var estados = ['Pendiente','En curso','Completada','Sin definir'];
+  var clientes = DB.clientes.filter(function(c){return c.estado==='Activo';});
+
+  // Filter buttons
+  var btnsFiltro = estados.map(function(e){
+    var cnt = clientes.filter(function(c){
+      return e==='Sin definir'?!c.estadoInstalacion:(c.estadoInstalacion||'Sin definir')===e;
+    }).length;
+    return '<button data-est="'+e+'" class="btn btn-sm" style="margin-right:4px">'+e+' ('+cnt+')</button>';
+  }).join('');
+
+  var rows = clientes.map(function(c){
+    var est = c.estadoInstalacion||'Sin definir';
+    var color = est==='Completada'?'var(--green)':est==='En curso'?'var(--amber)':est==='Pendiente'?'var(--red)':'var(--text2)';
+    return '<tr>'+
+      '<td><strong>'+c.nombre+'</strong></td>'+
+      '<td>'+(c.lote||'—')+'</td>'+
+      '<td>'+(c.barrio||'—')+'</td>'+
+      '<td>'+mPill(c.modelo)+'</td>'+
+      '<td>'+(c.fecha||'—')+'</td>'+
+      '<td style="font-weight:700;color:'+color+'">'+est+'</td>'+
+      '<td style="font-size:11px;color:var(--text2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.notas||'—')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var h = '<div style="margin-bottom:10px">'+btnsFiltro+'</div>'+
+    '<div id="inst-tabla">'+
+    '<table><thead><tr>'+
+      '<th>Cliente</th><th>Lote</th><th>Barrio</th><th>Modelo</th><th>Fecha inst.</th><th>Estado</th><th>Notas</th>'+
+    '</tr></thead><tbody id="inst-body">'+rows+'</tbody></table></div>';
+
+  reporteContainer('🔧 Estado de instalaciones', h);
+  // Attach filter button handlers
+  document.querySelectorAll('[data-est]').forEach(function(btn){
+    btn.onclick = function(){ reporteInstalaciones_filtro(this.dataset.est); };
+  });
+}
+
+function reporteInstalaciones_filtro(estado){
+  var clientes = DB.clientes.filter(function(c){return c.estado==='Activo';});
+  var filtered = estado==='Sin definir'
+    ? clientes.filter(function(c){return !c.estadoInstalacion;})
+    : clientes.filter(function(c){return (c.estadoInstalacion||'Sin definir')===estado;});
+
+  var rows = filtered.map(function(c){
+    var est = c.estadoInstalacion||'Sin definir';
+    var color = est==='Completada'?'var(--green)':est==='En curso'?'var(--amber)':est==='Pendiente'?'var(--red)':'var(--text2)';
+    return '<tr>'+
+      '<td><strong>'+c.nombre+'</strong></td>'+
+      '<td>'+(c.lote||'—')+'</td>'+
+      '<td>'+(c.barrio||'—')+'</td>'+
+      '<td>'+mPill(c.modelo)+'</td>'+
+      '<td>'+(c.fecha||'—')+'</td>'+
+      '<td style="font-weight:700;color:'+color+'">'+est+'</td>'+
+      '<td style="font-size:11px;color:var(--text2)">'+(c.notas||'—')+'</td>'+
+    '</tr>';
+  }).join('') || '<tr><td colspan="7" class="empty">Sin clientes en este estado.</td></tr>';
+
+  var tb = document.getElementById('inst-body');
+  if(tb) tb.innerHTML = rows;
+}
+
+// REPORTE: Vencimientos de garantía ========================
+function reporteVencimientos(){
+  var hoy = today();
+  var clientes = DB.clientes.filter(function(c){return c.estado==='Activo';});
+
+  var items = [];
+  clientes.forEach(function(c){
+    if(c.equipo && c.equipo.ups_gar_vence){
+      var dias = Math.round((new Date(c.equipo.ups_gar_vence)-new Date())/86400000);
+      items.push({cliente:c.nombre, lote:c.lote||'', barrio:c.barrio||'', equipo:'UPS '+( c.equipo.ups_marca||'')+' '+(c.equipo.ups_modelo||''), vence:c.equipo.ups_gar_vence, dias:dias});
+    }
+  });
+
+  items.sort(function(a,b){return a.dias-b.dias;});
+
+  if(!items.length){
+    reporteContainer('⏰ Vencimientos de garantía','<div class="empty">No hay garantías registradas.</div>');
+    return;
+  }
+
+  var rows = items.map(function(i){
+    var color = i.dias<0?'var(--red)':i.dias<=30?'#E65100':i.dias<=90?'var(--amber)':'var(--green)';
+    var label = i.dias<0?'Vencida hace '+Math.abs(i.dias)+' días':i.dias===0?'Vence hoy':'Vence en '+i.dias+' días';
+    return '<tr>'+
+      '<td><strong>'+i.cliente+'</strong></td>'+
+      '<td>'+(i.lote)+(i.barrio?' · '+i.barrio:'')+'</td>'+
+      '<td>'+i.equipo+'</td>'+
+      '<td>'+i.vence+'</td>'+
+      '<td style="font-weight:700;color:'+color+'">'+label+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var vencidas = items.filter(function(i){return i.dias<0;}).length;
+  var prox30 = items.filter(function(i){return i.dias>=0&&i.dias<=30;}).length;
+  var prox90 = items.filter(function(i){return i.dias>30&&i.dias<=90;}).length;
+
+  var h = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'+
+    '<div class="stat"><div class="stat-n red">'+vencidas+'</div><div class="stat-l">Vencidas</div></div>'+
+    '<div class="stat"><div class="stat-n amber">'+prox30+'</div><div class="stat-l">Vencen en 30 días</div></div>'+
+    '<div class="stat"><div class="stat-n">'+prox90+'</div><div class="stat-l">Vencen en 31-90 días</div></div>'+
+  '</div>'+
+  '<table><thead><tr>'+
+    '<th>Cliente</th><th>Ubicación</th><th>Equipo</th><th>Vence</th><th>Estado</th>'+
+  '</tr></thead><tbody>'+rows+'</tbody></table>';
+
+  reporteContainer('⏰ Vencimientos de garantía', h);
+}
+
+// REPORTE: Historial de presupuestos ========================
+function reporteHistorialPres(){
+  var pres = DB.presupuestos.filter(function(p){return p.historial&&p.historial.length;});
+
+  if(!pres.length){
+    reporteContainer('📋 Historial de presupuestos','<div class="empty">Sin historial registrado. Los cambios de estado se registran a partir de ahora.</div>');
+    return;
+  }
+
+  var h = '';
+  pres.forEach(function(p){
+    h += '<div class="card" style="margin-bottom:10px">'+
+      '<div class="ch"><div class="ct">'+presNum(p)+' — '+p.nombre+'</div>'+
+      '<div>'+presEstadoPill(p.estado)+'</div></div>'+
+      '<div class="card-body">'+
+        '<div style="display:flex;align-items:center;gap:0;flex-wrap:wrap">';
+
+    // Timeline
+    var steps = [{fecha:p.fecha||'',de:'',a:'Borrador'}].concat(p.historial||[]);
+    steps.forEach(function(s,i){
+      var color = s.a==='Aprobado'?'var(--green)':s.a==='Rechazado'?'var(--red)':s.a==='Enviado'?'var(--blue)':'var(--text2)';
+      h += '<div style="display:flex;align-items:center;gap:6px">'+
+        '<div style="text-align:center">'+
+          '<div style="width:28px;height:28px;border-radius:50%;background:'+color+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin:0 auto 3px">'+( i+1)+'</div>'+
+          '<div style="font-size:10px;font-weight:700;color:'+color+'">'+s.a+'</div>'+
+          '<div style="font-size:9px;color:var(--text2)">'+s.fecha+'</div>'+
+        '</div>'+
+        (i<steps.length-1?'<div style="width:30px;height:2px;background:var(--border);margin:0 2px"></div>':'');
+    });
+
+    h += '</div></div></div>';
+  });
+
+  reporteContainer('📋 Historial de presupuestos', h);
+}
+
 function reportePendientes(){
   const hace7=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
   const pendientes=DB.presupuestos.filter(function(p){
