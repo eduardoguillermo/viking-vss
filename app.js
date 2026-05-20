@@ -2476,8 +2476,8 @@ function pdfGestion(id){
 
 // MOVIMIENTO DE FONDOS =====================================
 const RUBROS_ING = ['Anticipos por ventas','Cancelaciones por ventas','Venta de partes y repuestos',
-  'M.O. servicio de mantenimiento','M.O. actualizaciones','M.O. modificaciones de instalacion'];
-const RUBROS_EGR = ['Compra de materiales','Gastos de movilidad','Reposicion de stock','Fletes y envios'];
+  'M.O. servicio de mantenimiento','M.O. actualizaciones','M.O. modificaciones de instalacion','Otros'];
+const RUBROS_EGR = ['Compra de materiales','Gastos de movilidad','Reposicion de stock','Fletes y envios','Otros'];
 
 function renderFondos(){
   var el = document.getElementById('fondos-body');
