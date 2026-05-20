@@ -1584,7 +1584,11 @@ function modalOrden(){
       '<div class="fg"><label>Cantidad *</label><input class="ord-cant" type="number" min="1" value="1"></div>'+
     '</div></div>'+
     '<button class="btn btn-sm" onclick="addOrdenItem()" style="margin-bottom:10px">➕ Agregar ítem</button>'+
-    '<div class="fg"><label>Proveedor</label><input id="ord-prov" placeholder="Nombre del proveedor"></div>'+
+    '<div class="fg"><label>Proveedor</label>'+
+      '<select id="ord-prov" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+        '<option value="">— sin vincular —</option>'+
+        DB.proveedores.map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join('')+
+      '</select></div>'+
     '<div class="fg"><label>Observaciones</label><input id="ord-obs" placeholder="Notas..."></div>',
     function(){
       const cids=[...document.querySelectorAll('.ord-cid')].map(function(s){return parseInt(s.value);});
