@@ -1,4 +1,3 @@
-
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--brand:#B71C1C;--brand-dk:#7F0000;--bg:#F0F0F0;--surface:#fff;--surface2:#F7F7F7;--border:#DDD;--text:#222;--text2:#666;--text3:#AAA;--green:#1B5E20;--green-bg:#E8F5E9;--amber:#7B4F00;--amber-bg:#FFF8E1;--blue:#0D47A1;--blue-bg:#E3F2FD;--red:#B71C1C;--red-bg:#FFEBEE;--purple:#4A148C;--purple-bg:#F3E5F5;--r:8px;--rl:12px}
 body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -11,7 +10,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);fo
 .topbar-ctx{font-size:12px;color:#888}
 .layout{display:flex;flex:1;overflow:hidden}
 .sidebar{width:200px;background:#1a1a1a;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
-.ns{font-size:9px;color:#444;padding:12px 12px 3px;text-transform:uppercase;letter-spacing:.12em}
+.ns{font-size:10px;color:#B71C1C;padding:14px 12px 4px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;border-top:1px solid #222}
 .ni{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:12px;color:#888;border-left:3px solid transparent;transition:all .1s}
 .ni:hover{color:#fff;background:#252525}
 .ni.on{color:#fff;background:#252525;border-left-color:var(--brand)}
