@@ -585,7 +585,7 @@ function renderMant(){
   document.getElementById('mant-stats').innerHTML=`<div class="stats stats-3">
     <div class="stat"><div class="stat-n">${tot}</div><div class="stat-l">Visitas totales</div></div>
     <div class="stat"><div class="stat-n green">${gar}</div><div class="stat-l">En garantía</div></div>
-    <div class="stat"><div class="stat-n blue">$${Math.round(costo).toLocaleString('es-AR')}</div><div class="stat-l">Costo acumulado</div></div>
+    <div class="stat"><div class="stat-n blue">$${Math.round(costo).toLocaleString('es-AR').toLocaleString('es-AR')}</div><div class="stat-l">Costo acumulado</div></div>
   </div>`;
   if(!c.mant.length){document.getElementById('cont-mant').innerHTML='<div class="empty">🛠️ Sin visitas registradas</div>';return;}
   document.getElementById('cont-mant').innerHTML=`<table>
@@ -596,7 +596,7 @@ function renderMant(){
       <td>${tipMantPill(m.tipo)}</td>
       <td>${m.motivo}</td><td>${m.falla||'—'}</td><td>${m.reparacion||'—'}</td>
       <td>${garPill(m.garantia)}</td>
-      <td>$${Math.round(parseFloat(m.costo)||0).toLocaleString('es-AR')}</td>
+      <td>$${Math.round(parseFloat(m.costo)||0).toLocaleString('es-AR').toLocaleString('es-AR')}</td>
       <td>${m.tecnico||'—'}</td><td>${m.obs||'—'}</td>
       <td><button class="btn btn-sm" onclick="modalMant(${i})" title="Editar">✏️</button></td>
     </tr>`).join('')}</tbody></table>`;
