@@ -1230,7 +1230,8 @@ function modalComponente(id){
       '</select></div>'+
       '<div class="fg"><label>Stock mínimo</label><input id="cp-min" type="number" min="0" value="'+(c?c.min||0:0)+'"></div>'+
       '<div class="fg"><label>Precio de costo (ref.)</label><input id="cp-precio" type="number" min="0" value="'+(c?c.precio||0:0)+'"></div>'+
-      '<div class="fg"><label>Proveedor</label><input id="cp-prov" value="'+(c?c.proveedor||'':'')+'" placeholder="Nombre del proveedor"></div>'+
+      '<div class="fg"><label>Proveedor</label><input id="cp-prov" value="'+(c?c.proveedor||'':'')+'" placeholder="Nombre del proveedor" list="dl-cp-prov">'+
+      '<datalist id="dl-cp-prov">'+(DB.proveedores.map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join(''))+'</datalist></div>'+
       '<div class="fg"><label>Área *</label>'+
         '<select id="cp-area" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
           ['Fábrica','Mantenimiento','Instalacion','Ambas'].map(function(a){return '<option'+(c&&c.area===a?' selected':'')+'>'+a+'</option>';}).join('')+
