@@ -4186,7 +4186,7 @@ function abrirOT(id){
       '</div></div>';
   }).join(''):'';
 
-  openModal('OT — '+f.nserie, headerHTML+iniciarHTML+matHTML+etapasHTML, null);
+  openModal('OT — '+f.nserie, headerHTML+iniciarHTML+matHTML+etapasHTML, null, true);
 }
 
 function toggleOpFab(otId, etapaId, op){
@@ -4221,6 +4221,7 @@ function completarEtapaFab(otId, etapaId){
   }
 
   save();
+  renderFabricacion();
   cerrarModal();
   abrirOT(otId);
 }
