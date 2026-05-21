@@ -108,8 +108,8 @@ function goTo(p){
 const SUBS=['datos','equipo','zigbee','ota','mant','acta'];
 function goSub(s){
   SUBS.forEach(x=>{
-    document.getElementById('sp-'+x).classList.toggle('on',x===s);
-    document.getElementById('sni-'+x).classList.toggle('on',x===s);
+    var sp=document.getElementById('sp-'+x); if(sp) sp.classList.toggle('on',x===s);
+    var sni=document.getElementById('sni-'+x); if(sni) sni.classList.toggle('on',x===s);
   });
   curSub=s;
   if(s==='datos') renderDatos();
