@@ -51,6 +51,10 @@ if(!DB.ordenes) DB.ordenes = [];
 if(!DB.proveedores) DB.proveedores = [];
 if(!DB.gestiones) DB.gestiones = [];
 if(!DB.fabricacion) DB.fabricacion = [];
+if(!DB.instalaciones) DB.instalaciones = [];
+if(!DB.kitinst) DB.kitinst = [];
+if(!DB.kitinstVersion) DB.kitinstVersion = 1;
+if(!DB.kitinstFecha) DB.kitinstFecha = today();
 if(!DB.kit) DB.kit = [];
 if(!DB.kitVersion) DB.kitVersion = 1;
 if(!DB.kitFecha) DB.kitFecha = today();
@@ -77,7 +81,7 @@ function save(){ localStorage.setItem(SKEY,JSON.stringify(DB)); }
 // NAV
 // =======================================================
 let curCid=null, curSub='datos';
-const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos','fabricacion','kit'];
+const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos','fabricacion','kit','instalaciones','kitinst'];
 
 function goTo(p){
   PANELS.forEach(x=>{
@@ -100,6 +104,8 @@ function goTo(p){
   if(p==='backup') renderBackupInfo();
   if(p==='fabricacion') renderFabricacion();
   if(p==='kit') renderKit();
+  if(p==='instalaciones') renderInstalaciones();
+  if(p==='kitinst') renderKitInst();
   if(p==='presupuestos') renderPresupuestos();
   if(p==='stock') renderStock();
   if(p==='catalogo') renderCatalogo();
@@ -211,6 +217,7 @@ function borrarCliente(id){
   if(!confirm('Última confirmación. ¿Eliminar "'+c.nombre+'"?')) return;
   DB.clientes=DB.clientes.filter(function(x){return x.id!==id;});
   save(); renderStats(); renderClientes(); goTo('clientes');
+initNavCollapse();
 
 // Backup reminder on every load
 setTimeout(function(){
@@ -4218,6 +4225,13 @@ function completarEtapaFab(otId, etapaId){
       var clienteObj=DB.clientes.find(function(c){return c.id===f.clienteId;});
       if(clienteObj) clienteObj.estadoInstalacion='Terminado';
     }
+    // Auto-create pedido de instalacion
+    if(!DB.instalaciones) DB.instalaciones=[];
+    var piExist=DB.instalaciones.find(function(p){return p.otId===f.id;});
+    if(!piExist){
+      var piNuevo=crearPedidoInstalacion(f.id);
+      if(piNuevo) alert('✅ Fabricación terminada.\nPedido de instalación creado automáticamente: '+piNuevo.numero);
+    }
   }
 
   save();
@@ -4364,6 +4378,396 @@ function eliminarKitItem(idx){
 }
 
 
+
+
+// =======================================================
+// INSTALACIONES
+// =======================================================
+
+function getNumPI(){
+  var yr = new Date().getFullYear();
+  var existing = (DB.instalaciones||[]).filter(function(p){
+    return p.numero && p.numero.startsWith('PI-'+yr);
+  });
+  var max=0;
+  existing.forEach(function(p){
+    var n=parseInt((p.numero||'').split('-')[2]||'0');
+    if(n>max) max=n;
+  });
+  return 'PI-'+yr+'-'+String(max+1).padStart(4,'0');
+}
+
+function crearPedidoInstalacion(otId){
+  // Called automatically when OT reaches Entrega completada
+  var ot = (DB.fabricacion||[]).find(function(f){return f.id===otId;});
+  if(!ot) return;
+
+  var cliente = DB.clientes.find(function(c){return c.id===ot.clienteId;})||null;
+
+  // Build kit from client zigbee sensors + kitinst base
+  var kitItems = [];
+
+  // 1. Kit base instalacion
+  (DB.kitinst||[]).forEach(function(item){
+    var comp = DB.componentes.find(function(c){return c.id===item.compId;})||{};
+    kitItems.push({
+      compId:item.compId,
+      compCodigo:comp.codigo||'',
+      compNombre:comp.desc||item.compNombre||'',
+      cant:item.cant,
+      unidad:comp.unidad||'',
+      origen:'kit-base',
+      devuelto:0
+    });
+  });
+
+  // 2. Zigbee sensors from client
+  if(cliente&&cliente.zigbee&&cliente.zigbee.length){
+    // Group zigbee by model to count
+    var zigbeeMap={};
+    cliente.zigbee.forEach(function(z){
+      var key=(z.marca||'')+'|'+(z.modelo||'')+'|'+(z.tipo||'');
+      if(!zigbeeMap[key]) zigbeeMap[key]={tipo:z.tipo||'',marca:z.marca||'',modelo:z.modelo||'',cant:0};
+      zigbeeMap[key].cant++;
+    });
+    Object.values(zigbeeMap).forEach(function(z){
+      // Try to find in componentes
+      var comp=DB.componentes.find(function(c){
+        return c.desc&&c.desc.toLowerCase().includes((z.modelo||'').toLowerCase())&&(z.modelo);
+      })||null;
+      kitItems.push({
+        compId:comp?comp.id:null,
+        compCodigo:comp?comp.codigo:'',
+        compNombre:z.tipo+(z.marca?' '+z.marca:'')+(z.modelo?' '+z.modelo:''),
+        cant:z.cant,
+        unidad:'u',
+        origen:'zigbee',
+        devuelto:0
+      });
+    });
+  }
+
+  var pi={
+    id:DB.nid++,
+    numero:getNumPI(),
+    otId:otId,
+    nserie:ot.nserie,
+    modelo:ot.modelo,
+    clienteId:ot.clienteId||null,
+    cliente:ot.cliente||'Stock',
+    direccion:cliente?(cliente.lote||'')+(cliente.barrio?' · '+cliente.barrio:''):'',
+    tel:cliente?cliente.tel||'':'',
+    tecnico:'',
+    fechaTentativa:'',
+    estado:'Pendiente',
+    fecha:today(),
+    kit:kitItems,
+    obs:''
+  };
+
+  DB.instalaciones.push(pi);
+  // Update cliente estado
+  if(cliente) cliente.estadoInstalacion='Pendiente';
+  save();
+  return pi;
+}
+
+function renderInstalaciones(){
+  if(!DB.instalaciones) DB.instalaciones=[];
+  var q=(document.getElementById('q-inst')?document.getElementById('q-inst').value||'':'').toLowerCase();
+  var fest=document.getElementById('inst-estado-filter')?document.getElementById('inst-estado-filter').value:'';
+
+  var lista=DB.instalaciones.filter(function(p){
+    return (!q||((p.numero||'')+(p.cliente||'')+(p.nserie||'')).toLowerCase().includes(q))&&
+           (!fest||p.estado===fest);
+  }).sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});
+
+  var pendiente=(DB.instalaciones||[]).filter(function(p){return p.estado==='Pendiente';}).length;
+  var enCurso=(DB.instalaciones||[]).filter(function(p){return p.estado==='En curso';}).length;
+  var completado=(DB.instalaciones||[]).filter(function(p){return p.estado==='Completado';}).length;
+
+  var el=document.getElementById('inst-stats');
+  if(el) el.innerHTML=
+    '<div class="stat"><div class="stat-n amber">'+pendiente+'</div><div class="stat-l">Pendientes</div></div>'+
+    '<div class="stat"><div class="stat-n blue">'+enCurso+'</div><div class="stat-l">En curso</div></div>'+
+    '<div class="stat"><div class="stat-n green">'+completado+'</div><div class="stat-l">Completados</div></div>'+
+    '<div class="stat"><div class="stat-n">'+DB.instalaciones.length+'</div><div class="stat-l">Total</div></div>';
+
+  var tb=document.getElementById('tbody-inst');
+  if(!lista.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin pedidos de instalación.</td></tr>';return;}
+
+  tb.innerHTML=lista.map(function(p){
+    var estadoColor=p.estado==='Pendiente'?'p-a':p.estado==='En curso'?'p-b':p.estado==='Completado'?'p-g':'p-r';
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:11px;font-weight:700">'+p.numero+'</td>'+
+      '<td style="font-family:monospace;font-size:11px">'+p.nserie+'</td>'+
+      '<td style="font-size:11px"><strong>'+(p.cliente||'Stock')+'</strong>'+
+        (p.direccion?'<br><span style="font-size:10px;color:var(--text2)">'+p.direccion+'</span>':'')+
+      '</td>'+
+      '<td>'+mPill(p.modelo)+'</td>'+
+      '<td style="font-size:11px">'+(p.tecnico||'—')+'</td>'+
+      '<td style="font-size:11px">'+(p.fechaTentativa||'—')+'</td>'+
+      '<td><span class="pill '+estadoColor+'">'+p.estado+'</span></td>'+
+      '<td><button class="btn btn-sm btn-p" onclick="abrirPI('+p.id+')">📋 Ver</button></td>'+
+    '</tr>';
+  }).join('');
+}
+
+function abrirPI(id){
+  var p=DB.instalaciones.find(function(x){return x.id===id;});
+  if(!p) return;
+
+  var estadoColor=p.estado==='Pendiente'?'p-a':p.estado==='En curso'?'p-b':p.estado==='Completado'?'p-g':'p-r';
+
+  // Kit table
+  var kitHTML='<div class="card" style="margin-bottom:10px">'+
+    '<div class="ch"><div class="ct">🧰 Materiales de instalación</div>'+
+      '<button class="btn btn-sm" onclick="agregarMatInst('+id+')">➕ Agregar</button>'+
+    '</div>'+
+    '<div class="card-body">'+
+    '<table style="width:100%;border-collapse:collapse">'+
+    '<thead><tr style="background:var(--surface2)">'+
+      '<th style="padding:5px 10px;font-size:10px">Código</th>'+
+      '<th style="padding:5px 10px;font-size:10px">Material</th>'+
+      '<th style="padding:5px 10px;font-size:10px;text-align:center">Cant.</th>'+
+      '<th style="padding:5px 10px;font-size:10px">Origen</th>'+
+      '<th style="padding:5px 10px;font-size:10px;text-align:center">Stock</th>'+
+      '<th style="padding:5px 10px;font-size:10px"></th>'+
+    '</tr></thead><tbody>'+
+    (p.kit||[]).map(function(item,i){
+      var stock=item.compId?stockActual(item.compId):'—';
+      var stockColor=typeof stock==='number'?(stock<item.cant?'var(--red)':stock<item.cant*2?'var(--amber)':'var(--green)'):'var(--text2)';
+      return '<tr style="border-bottom:1px solid var(--border)">'+
+        '<td style="padding:5px 10px;font-family:monospace;font-size:11px">'+(item.compCodigo||'—')+'</td>'+
+        '<td style="padding:5px 10px;font-size:11px">'+item.compNombre+'</td>'+
+        '<td style="padding:5px 10px;text-align:center">'+item.cant+'</td>'+
+        '<td style="padding:5px 10px;font-size:10px;color:var(--text2)">'+(item.origen==='zigbee'?'Zigbee cliente':item.origen==='kit-base'?'Kit base':'Manual')+'</td>'+
+        '<td style="padding:5px 10px;text-align:center;font-weight:700;color:'+stockColor+'">'+(typeof stock==='number'?stock:'—')+'</td>'+
+        '<td style="padding:5px 10px"><button class="btn btn-sm" style="color:var(--red)" onclick="quitarMatInst('+id+','+i+')">🗑️</button></td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table></div></div>';
+
+  var body=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'+
+      '<span style="font-family:monospace;font-weight:700;color:var(--primary)">'+p.numero+'</span>'+
+      '<span style="font-family:monospace;font-size:11px">'+p.nserie+'</span>'+
+      mPill(p.modelo)+
+      '<span class="pill '+estadoColor+'">'+p.estado+'</span>'+
+    '</div>'+
+    '<div class="fg2" style="margin-bottom:12px">'+
+      '<div class="fg"><label>Cliente</label><div style="font-size:12px;padding:6px 0">'+(p.cliente||'Stock')+'</div></div>'+
+      '<div class="fg"><label>Dirección</label><div style="font-size:12px;padding:6px 0">'+(p.direccion||'—')+'</div></div>'+
+      '<div class="fg"><label>Teléfono</label><div style="font-size:12px;padding:6px 0">'+(p.tel||'—')+'</div></div>'+
+      '<div class="fg"><label>Técnico</label><input id="pi-tecnico" value="'+(p.tecnico||'')+'" placeholder="Técnico asignado" onblur="savePI('+id+')"></div>'+
+      '<div class="fg"><label>Fecha tentativa</label><input id="pi-fecha" type="date" value="'+(p.fechaTentativa||'')+'" onchange="savePI('+id+')"></div>'+
+      '<div class="fg"><label>Estado</label>'+
+        '<select id="pi-estado" onchange="cambiarEstadoPI('+id+')" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          ['Pendiente','En curso','Completado','Cancelado'].map(function(s){
+            return '<option'+(s===p.estado?' selected':'')+'>'+s+'</option>';
+          }).join('')+
+        '</select></div>'+
+      '<div class="fg full"><label>Observaciones</label><input id="pi-obs" value="'+(p.obs||'')+'" placeholder="Observaciones..." onblur="savePI('+id+')"></div>'+
+    '</div>'+
+    kitHTML+
+    (p.estado==='Pendiente'?
+      '<div style="text-align:center;margin-top:8px">'+
+        '<button class="btn btn-p" onclick="confirmarSalidaStockInst('+id+')">📦 Confirmar salida de stock</button>'+
+      '</div>':'');
+
+  openModal('Pedido de instalación — '+p.numero, body, null, true);
+}
+
+function savePI(id){
+  var p=DB.instalaciones.find(function(x){return x.id===id;});
+  if(!p) return;
+  var g=function(elId){var el=document.getElementById(elId);return el?el.value:'';};
+  p.tecnico=g('pi-tecnico');
+  p.fechaTentativa=g('pi-fecha');
+  p.obs=g('pi-obs');
+  save();
+}
+
+function cambiarEstadoPI(id){
+  var p=DB.instalaciones.find(function(x){return x.id===id;});
+  if(!p) return;
+  var nuevo=document.getElementById('pi-estado').value;
+  p.estado=nuevo;
+  // Update cliente estado
+  if(p.clienteId){
+    var c=DB.clientes.find(function(x){return x.id===p.clienteId;});
+    if(c){
+      if(nuevo==='En curso') c.estadoInstalacion='En curso';
+      if(nuevo==='Completado') c.estadoInstalacion='Completada';
+      if(nuevo==='Pendiente') c.estadoInstalacion='Pendiente';
+    }
+  }
+  save();
+  renderInstalaciones();
+  cerrarModal();
+}
+
+function confirmarSalidaStockInst(id){
+  var p=DB.instalaciones.find(function(x){return x.id===id;});
+  if(!p) return;
+
+  var faltantes=[];
+  (p.kit||[]).forEach(function(item){
+    if(!item.compId) return;
+    var disponible=stockActual(item.compId);
+    if(disponible<item.cant){
+      faltantes.push({nombre:item.compNombre,necesita:item.cant,tiene:disponible});
+    }
+  });
+
+  if(faltantes.length){
+    var msg='⚠️ Stock insuficiente:\n\n';
+    faltantes.forEach(function(f){msg+='• '+f.nombre+': necesita '+f.necesita+', hay '+f.tiene+'\n';});
+    msg+='\n¿Confirmar salida de todas formas?';
+    if(!confirm(msg)) return;
+  }
+
+  if(!confirm('¿Confirmar salida de stock para instalación '+p.numero+'?')) return;
+
+  (p.kit||[]).forEach(function(item){
+    if(!item.compId) return;
+    var comp=DB.componentes.find(function(c){return c.id===item.compId;})||{};
+    DB.movimientos.push({
+      id:DB.nid++, compId:item.compId, fecha:today(),
+      tipo:'Salida', motivo:'Instalación — '+p.numero+' — '+p.cliente,
+      ref:p.nserie, cant:item.cant,
+      precio:parseFloat(comp.costo||comp.precio)||0
+    });
+  });
+
+  p.estado='En curso';
+  if(p.clienteId){
+    var c=DB.clientes.find(function(x){return x.id===p.clienteId;});
+    if(c) c.estadoInstalacion='En curso';
+  }
+  save();
+  cerrarModal();
+  renderInstalaciones();
+  alert('Salida de stock confirmada. Pedido en curso.');
+}
+
+function agregarMatInst(piId){
+  var p=DB.instalaciones.find(function(x){return x.id===piId;});
+  if(!p) return;
+  var compSel=DB.componentes.map(function(c){
+    return '<option value="'+c.id+'">'+c.codigo+' — '+c.desc+'</option>';
+  }).join('');
+
+  openModal('Agregar material a instalación',
+    '<div class="fg2">'+
+      '<div class="fg full"><label>Componente</label>'+
+        '<select id="mi-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          '<option value="">— seleccionar —</option>'+compSel+
+        '</select></div>'+
+      '<div class="fg"><label>Cantidad</label><input id="mi-cant" type="number" min="1" value="1"></div>'+
+    '</div>',
+    function(){
+      var compId=parseInt(document.getElementById('mi-comp').value)||0;
+      var cant=parseFloat(document.getElementById('mi-cant').value)||0;
+      if(!compId||!cant){alert('Seleccioná componente y cantidad.');return false;}
+      var comp=DB.componentes.find(function(c){return c.id===compId;})||{};
+      if(!p.kit) p.kit=[];
+      p.kit.push({compId:compId,compCodigo:comp.codigo||'',compNombre:comp.desc||'',cant:cant,unidad:comp.unidad||'',origen:'manual',devuelto:0});
+      save(); cerrarModal(); abrirPI(piId); return true;
+    }
+  );
+}
+
+function quitarMatInst(piId, idx){
+  var p=DB.instalaciones.find(function(x){return x.id===piId;});
+  if(!p||!p.kit) return;
+  if(!confirm('¿Quitar este material del kit?')) return;
+  p.kit.splice(idx,1);
+  save(); cerrarModal(); abrirPI(piId);
+}
+
+// KIT BASE INSTALACION =====================================
+function renderKitInst(){
+  if(!DB.kitinst) DB.kitinst=[];
+  var ver=document.getElementById('kitinst-version');
+  if(ver) ver.textContent='Versión '+(DB.kitinstVersion||1)+' · '+(DB.kitinstFecha||today());
+
+  var tb=document.getElementById('tbody-kitinst');
+  if(!DB.kitinst.length){tb.innerHTML='<tr><td colspan="6" class="empty">Sin materiales en el kit base.</td></tr>';return;}
+
+  tb.innerHTML=DB.kitinst.map(function(item,i){
+    var comp=DB.componentes.find(function(c){return c.id===item.compId;})||{};
+    var stock=stockActual(item.compId);
+    var color=stock<item.cant?'var(--red)':stock<item.cant*2?'var(--amber)':'var(--green)';
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:11px">'+(comp.codigo||'—')+'</td>'+
+      '<td>'+(comp.desc||item.compNombre||'—')+'</td>'+
+      '<td style="text-align:center;font-weight:700">'+item.cant+'</td>'+
+      '<td>'+(comp.unidad||'—')+'</td>'+
+      '<td style="text-align:center;font-weight:700;color:'+color+'">'+stock+'</td>'+
+      '<td style="display:flex;gap:3px">'+
+        '<button class="btn btn-sm" onclick="modalKitInstItem('+i+')">✏️</button>'+
+        '<button class="btn btn-sm" style="color:var(--red)" onclick="eliminarKitInstItem('+i+')">🗑️</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function modalKitInstItem(idx){
+  var item=idx>=0?(DB.kitinst[idx]||{}):null;
+  var compSel=DB.componentes.map(function(c){
+    return '<option value="'+c.id+'"'+(item&&item.compId===c.id?' selected':'')+'>'+c.codigo+' — '+c.desc+'</option>';
+  }).join('');
+
+  openModal(idx>=0?'Editar material del kit base':'Agregar material al kit base',
+    '<div class="fg2">'+
+      '<div class="fg full"><label>Componente</label>'+
+        '<select id="ki-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          '<option value="">— seleccionar —</option>'+compSel+
+        '</select></div>'+
+      '<div class="fg"><label>Cantidad</label>'+
+        '<input id="ki-cant" type="number" min="1" value="'+(item?item.cant:1)+'"></div>'+
+    '</div>',
+    function(){
+      var compId=parseInt(document.getElementById('ki-comp').value)||0;
+      var cant=parseFloat(document.getElementById('ki-cant').value)||0;
+      if(!compId||!cant){alert('Seleccioná componente y cantidad.');return false;}
+      var comp=DB.componentes.find(function(c){return c.id===compId;})||{};
+      var newItem={compId:compId,compCodigo:comp.codigo||'',compNombre:comp.desc||'',cant:cant};
+      if(idx>=0){DB.kitinst[idx]=newItem;}else{DB.kitinst.push(newItem);}
+      DB.kitinstVersion=(parseInt(DB.kitinstVersion||0)+1);
+      DB.kitinstFecha=today();
+      save(); renderKitInst(); return true;
+    }
+  );
+}
+
+function eliminarKitInstItem(idx){
+  if(!confirm('¿Eliminar este material del kit base?')) return;
+  DB.kitinst.splice(idx,1);
+  DB.kitinstVersion=(parseInt(DB.kitinstVersion||0)+1);
+  DB.kitinstFecha=today();
+  save(); renderKitInst();
+}
+
+
+
+function toggleNav(el){
+  var items = el.nextElementSibling;
+  if(!items||!items.classList.contains('nav-section-items')) return;
+  var isCollapsed = items.style.display === 'none';
+  if(isCollapsed){
+    items.style.display = '';
+    el.innerHTML = el.innerHTML.replace('▸','▾');
+  } else {
+    items.style.display = 'none';
+    el.innerHTML = el.innerHTML.replace('▾','▸');
+  }
+}
+
+function initNavCollapse(){
+  // All sections start expanded - nothing to do
+}
 
 // INIT
 // =======================================================
