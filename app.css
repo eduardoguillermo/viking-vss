@@ -1,3 +1,4 @@
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--brand:#B71C1C;--brand-dk:#7F0000;--bg:#F0F0F0;--surface:#fff;--surface2:#F7F7F7;--border:#DDD;--text:#222;--text2:#666;--text3:#AAA;--green:#1B5E20;--green-bg:#E8F5E9;--amber:#7B4F00;--amber-bg:#FFF8E1;--blue:#0D47A1;--blue-bg:#E3F2FD;--red:#B71C1C;--red-bg:#FFEBEE;--purple:#4A148C;--purple-bg:#F3E5F5;--r:8px;--rl:12px}
 body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
