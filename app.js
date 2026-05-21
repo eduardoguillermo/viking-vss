@@ -2403,7 +2403,7 @@ function reporteMantenimientos(){
         tipo: m.tipo||'—',
         motivo: m.motivo||'—',
         falla: m.falla||'—',
-        solucion: m.solucion||'—',
+        solucion: m.reparacion||'—',
         garantia: m.garantia||'No',
         costo: parseFloat(m.costo)||0,
         tecnico: m.tecnico||'—'
@@ -2495,7 +2495,7 @@ function reporteMantenimientos(){
 
   h += '<table><thead><tr>'+
     '<th>Fecha</th><th>Cliente</th><th>Modelo</th><th>Tipo</th>'+
-    '<th>Motivo</th><th>Solución</th><th>Garantía</th>'+
+    '<th>Motivo</th><th>Falla</th><th>Reparación</th><th>Garantía</th>'+
     '<th style="text-align:right">Costo $</th><th>Técnico</th>'+
   '</tr></thead><tbody>';
 
@@ -2506,6 +2506,7 @@ function reporteMantenimientos(){
       '<td>'+mPill(m.modelo)+'</td>'+
       '<td><span class="pill p-b">'+m.tipo+'</span></td>'+
       '<td style="font-size:11px">'+m.motivo+'</td>'+
+      '<td style="font-size:11px">'+m.falla+'</td>'+
       '<td style="font-size:11px">'+m.solucion+'</td>'+
       '<td style="text-align:center">'+(m.garantia==='Sí'?'<span style="color:var(--green);font-weight:700">✔</span>':'—')+'</td>'+
       '<td style="text-align:right;font-weight:700">$'+Math.round(m.costo).toLocaleString('es-AR')+'</td>'+
@@ -2525,7 +2526,7 @@ function pdfReporteMantenimientos(){
     c.mant.forEach(function(m){
       todos.push({cliente:c.nombre,lote:c.lote||'',modelo:c.modelo||'',
         fecha:m.fecha||'',tipo:m.tipo||'',motivo:m.motivo||'',
-        solucion:m.solucion||'',garantia:m.garantia||'No',
+        solucion:m.reparacion||'',garantia:m.garantia||'No',
         costo:parseFloat(m.costo)||0,tecnico:m.tecnico||''});
     });
   });
@@ -2548,7 +2549,7 @@ function pdfReporteMantenimientos(){
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Mantenimientos</title><style>'+css+'</style></head><body>'+
     '<button class="btn" onclick="window.print()">🖨️ Imprimir</button>'+
     '<h1>HISTORIAL DE MANTENIMIENTOS</h1><div class="meta">'+empresa+' · '+today()+'</div>'+
-    '<table><thead><tr><th>Fecha</th><th>Cliente</th><th>Modelo</th><th>Tipo</th><th>Motivo</th><th>Solución</th><th>Gtía</th><th>Costo</th><th>Técnico</th></tr></thead>'+
+    '<table><thead><tr><th>Fecha</th><th>Cliente</th><th>Modelo</th><th>Tipo</th><th>Motivo</th><th>Falla</th><th>Reparación</th><th>Gtía</th><th>Costo</th><th>Técnico</th></tr></thead>'+
     '<tbody>'+rows+'</tbody>'+
     '<tfoot><tr><td colspan="7" style="padding:7px 8px;text-align:right">TOTAL</td>'+
     '<td style="padding:7px 8px;text-align:right">$'+Math.round(total).toLocaleString('es-AR')+'</td><td></td></tr></tfoot>'+
