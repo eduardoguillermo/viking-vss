@@ -1500,8 +1500,8 @@ function modalComponente(id){
         DB.componentes.push({
           id:DB.nid++,codigo:cod,desc:desc,categoria:cat,
           unidad:document.getElementById('cp-uni').value,
-          min:parseFloat(document.getElementById('cp-min').value)||0,
-          costo:newCosto,
+          unidad:document.getElementById('cp-uni')?document.getElementById('cp-uni').value:'',
+          min:parseFloat(document.getElementById('cp-min')?document.getElementById('cp-min').value:0)||0,
           precio:newCosto,
           costo_usd:parseFloat(document.getElementById('cp-costo-usd')?document.getElementById('cp-costo-usd').value:0)||0,
           venta:parseFloat(document.getElementById('cp-venta')?document.getElementById('cp-venta').value:0)||0,
