@@ -105,7 +105,7 @@ function goTo(p){
 // =======================================================
 // SUBPANELS
 // =======================================================
-const SUBS=['datos','equipo','zigbee','ota','mant'];
+const SUBS=['datos','equipo','zigbee','ota','mant','acta'];
 function goSub(s){
   SUBS.forEach(x=>{
     document.getElementById('sp-'+x).classList.toggle('on',x===s);
@@ -117,6 +117,7 @@ function goSub(s){
   if(s==='zigbee') renderZigbee();
   if(s==='ota') renderOTA();
   if(s==='mant') renderMant();
+  if(s==='acta') renderActa();
 }
 
 // =======================================================
@@ -3276,6 +3277,151 @@ function reporteStockPrecios(){
       '<td style="text-align:right;padding:7px 8px;color:#81C784">$'+Math.round(totalVenta).toLocaleString('es-AR')+'</td>'+
     '</tr></tfoot></table>'+
     '</body></html>');
+  w.document.close();
+}
+
+
+// ACTA DE CONFORMIDAD =====================================
+function renderActa(){
+  const c = gc();
+  const el = document.getElementById('cont-acta');
+  if(!el) return;
+  const numActa = 'ACR-'+new Date().getFullYear()+'-'+String(c.id).padStart(4,'0');
+  
+  el.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+      '<div>'+
+        '<div style="font-size:12px;color:var(--text2)">Acta N°: <strong>'+numActa+'</strong></div>'+
+        '<div style="font-size:12px;color:var(--text2)">Cliente: <strong>'+c.nombre+'</strong></div>'+
+        '<div style="font-size:12px;color:var(--text2)">Modelo: <strong>Zpro '+(c.modelo||'Base')+'</strong></div>'+
+      '</div>'+
+      '<button class="btn btn-p" onclick="generarPDFActa('+c.id+')">📄 Generar acta PDF</button>'+
+    '</div>'+
+    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-size:12px;color:var(--text2)">'+
+      'El acta de recepción y conformidad certifica que el cliente recibió el sistema instalado y funcionando correctamente. '+
+      'Su firma da inicio al período de garantía.<br><br>'+
+      'El PDF generado incluye: datos del cliente, sistema instalado, dispositivos Zigbee registrados y espacios para firma.'+
+    '</div>';
+}
+
+function generarPDFActa(cid){
+  const c = DB.clientes.find(function(x){return x.id===cid;});
+  if(!c) return;
+  const empresa = (DB.config&&DB.config.empresa)||'Viking Security Systems';
+  const tel = (DB.config&&DB.config.tel)||'';
+  const email = (DB.config&&DB.config.email)||'';
+  const web = (DB.config&&DB.config.web)||'';
+  const numActa = 'ACR-'+new Date().getFullYear()+'-'+String(c.id).padStart(4,'0');
+  const fecha = today();
+  const garantia = (c.equipo&&c.equipo.garantia==='Sí')?'12 meses sobre materiales y mano de obra':'Consultar condiciones';
+
+  // Dispositivos Zigbee
+  var zigbeeRows = '';
+  if(c.zigbee&&c.zigbee.length){
+    zigbeeRows = c.zigbee.map(function(d){
+      return '<tr><td>'+d.tipo+'</td><td>'+d.nombre+'</td><td>'+(d.ubicacion||'—')+'</td></tr>';
+    }).join('');
+  } else {
+    zigbeeRows = '<tr><td colspan="3" style="color:#999;font-style:italic">Sin dispositivos registrados</td></tr>';
+  }
+
+  var css = '*{box-sizing:border-box;margin:0;padding:0}'+
+    'body{font-family:Segoe UI,Arial,sans-serif;padding:0;font-size:12px;color:#222}'+
+    '.header{background:#111;color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}'+
+    '.header h1{font-size:16px;font-weight:700;color:#fff}'+
+    '.header .sub{font-size:10px;color:#aaa;margin-top:2px}'+
+    '.acta-num{font-size:20px;font-weight:700;color:#B71C1C;text-align:right}'+
+    '.body{padding:20px 24px}'+
+    '.section{margin-bottom:18px}'+
+    '.section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#B71C1C;border-bottom:2px solid #B71C1C;padding-bottom:3px;margin-bottom:10px}'+
+    '.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}'+
+    '.field{background:#f8f8f8;border-radius:4px;padding:6px 10px}'+
+    '.field .l{font-size:9px;color:#999;font-weight:700;text-transform:uppercase;margin-bottom:1px}'+
+    '.field .v{font-size:12px;font-weight:500}'+
+    'table{width:100%;border-collapse:collapse;margin-top:4px}'+
+    'th{background:#B71C1C;color:#fff;padding:6px 10px;font-size:10px;text-align:left;font-weight:700}'+
+    'td{padding:6px 10px;border-bottom:1px solid #eee;font-size:11px}'+
+    '.declaracion{background:#FFF8E1;border:1px solid #FFD54F;border-radius:5px;padding:12px 14px;font-size:11px;line-height:1.6;margin-bottom:18px}'+
+    '.firmas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:10px}'+
+    '.firma-box{border-top:2px solid #222;padding-top:8px}'+
+    '.firma-label{font-size:10px;color:#666;margin-bottom:4px;font-weight:700;text-transform:uppercase}'+
+    '.firma-line{font-size:11px;color:#444;margin-bottom:3px}'+
+    '.footer{background:#f5f5f5;border-top:3px solid #B71C1C;padding:10px 24px;font-size:9px;color:#888;display:flex;justify-content:space-between}'+
+    '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:11px}'+
+    '@media print{.btn{display:none}@page{margin:0}}';
+
+  var body =
+    '<button class="btn" onclick="window.print()">🖨️ Imprimir</button>'+
+    '<div class="header">'+
+      '<div><div class="sub">ACTA DE RECEPCIÓN Y CONFORMIDAD</div><h1>'+empresa.toUpperCase()+'</h1></div>'+
+      '<div class="acta-num">'+numActa+'<div style="font-size:11px;font-weight:400;color:#aaa;text-align:right">Fecha: '+fecha+'</div></div>'+
+    '</div>'+
+    '<div class="body">'+
+
+    '<div class="section">'+
+      '<div class="section-title">Datos del cliente</div>'+
+      '<div class="grid">'+
+        '<div class="field"><div class="l">Nombre</div><div class="v">'+c.nombre+'</div></div>'+
+        '<div class="field"><div class="l">Domicilio</div><div class="v">'+(c.lote||'—')+(c.barrio?', '+c.barrio:'')+'</div></div>'+
+        '<div class="field"><div class="l">Teléfono</div><div class="v">'+(c.tel||'—')+'</div></div>'+
+        '<div class="field"><div class="l">Email</div><div class="v">'+(c.email||'—')+'</div></div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="section">'+
+      '<div class="section-title">Sistema instalado</div>'+
+      '<div class="grid">'+
+        '<div class="field"><div class="l">Modelo</div><div class="v">Zpro '+(c.modelo||'Base')+'</div></div>'+
+        '<div class="field"><div class="l">Versión firmware</div><div class="v">'+(c.version||'—')+'</div></div>'+
+        '<div class="field"><div class="l">N° de serie</div><div class="v">'+(c.equipo&&c.equipo.esp_serie||'—')+'</div></div>'+
+        '<div class="field"><div class="l">Fecha de instalación</div><div class="v">'+(c.fecha||fecha)+'</div></div>'+
+        '<div class="field"><div class="l">Técnico instalador</div><div class="v">___________________________</div></div>'+
+        '<div class="field"><div class="l">Garantía</div><div class="v">'+garantia+'</div></div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="section">'+
+      '<div class="section-title">Dispositivos instalados</div>'+
+      '<table><thead><tr><th>Tipo</th><th>Nombre / Ubicación</th><th>Sector</th></tr></thead>'+
+      '<tbody>'+zigbeeRows+'</tbody></table>'+
+    '</div>'+
+
+    '<div class="declaracion">'+
+      '<strong>DECLARACIÓN DE CONFORMIDAD</strong><br><br>'+
+      'El/la Sr./Sra. <strong>'+c.nombre+'</strong>, en carácter de titular del inmueble ubicado en '+
+      (c.lote||'el domicilio indicado')+(c.barrio?', '+c.barrio:'')+', declara haber recibido el sistema de seguridad '+
+      'Zpro '+(c.modelo||'Base')+' instalado y en correcto funcionamiento, habiendo verificado personalmente '+
+      'la operación de todos los dispositivos listados y recibido la capacitación necesaria para su uso.<br><br>'+
+      'A partir de la fecha de firma del presente documento comienza a regir el período de <strong>garantía de '+garantia+'</strong>.'+
+    '</div>'+
+
+    '<div class="section">'+
+      '<div class="section-title">Firmas</div>'+
+      '<div class="firmas">'+
+        '<div class="firma-box">'+
+          '<div class="firma-label">Cliente</div>'+
+          '<div style="height:50px"></div>'+
+          '<div class="firma-line">Nombre: '+c.nombre+'</div>'+
+          '<div class="firma-line">DNI: ___________________________</div>'+
+          '<div class="firma-line">Fecha: '+fecha+'</div>'+
+        '</div>'+
+        '<div class="firma-box">'+
+          '<div class="firma-label">'+empresa+'</div>'+
+          '<div style="height:50px"></div>'+
+          '<div class="firma-line">Técnico: ___________________________</div>'+
+          '<div class="firma-line">Fecha: '+fecha+'</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+
+    '</div>'+
+    '<div class="footer">'+
+      '<div>'+empresa+(tel?' · '+tel:'')+(email?' · '+email:'')+(web?' · '+web:'')+'</div>'+
+      '<div>'+numActa+' · Sistema Administrativo Viking Security Systems</div>'+
+    '</div>';
+
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Acta '+numActa+'</title><style>'+css+'</style></head><body>'+body+'</body></html>');
   w.document.close();
 }
 
