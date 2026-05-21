@@ -286,6 +286,9 @@
         <select id="cat-filter" onchange="renderCatalogo()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">
           <option value="">Todas las categorías</option>
         </select>
+        <select id="cat-prov-filter" onchange="renderCatalogo()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">
+          <option value="">Todos los proveedores</option>
+        </select>
         <button class="btn btn-p" onclick="modalComponente(-1)">➕ Nuevo componente</button>
         <button class="btn btn-sm" onclick="pdfCatalogo()">🖨️ PDF</button>
       </div>
@@ -333,7 +336,9 @@
 
     <!-- ÓRDENES -->
     <div class="panel" id="panel-ordenes">
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <input id="q-ord" type="text" placeholder="🔍 N° OC, proveedor..." oninput="renderOrdenes()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;max-width:260px">
+        <div style="display:flex;gap:8px">
         <button class="btn btn-p" onclick="generarOrdenAutomatica()">⚡ Generar orden automática</button>
         <button class="btn" onclick="modalOrden()">➕ Nueva orden manual</button>
       </div>
@@ -341,7 +346,7 @@
         <div class="twrap">
           <table>
             <colgroup><col style="width:10%"><col style="width:12%"><col style="width:30%"><col style="width:10%"><col style="width:10%"><col style="width:18%"><col style="width:10%"></colgroup>
-            <thead><tr><th>Fecha</th><th>Estado</th><th>Componentes</th><th>Proveedor</th><th>Total est.</th><th>Observaciones</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>N° OC</th><th>Fecha</th><th>Estado</th><th>Componentes</th><th>Proveedor</th><th>Total est.</th><th>Observaciones</th><th>Acciones</th></tr></thead>
             <tbody id="tbody-ord"></tbody>
           </table>
         </div>
@@ -385,8 +390,8 @@
           <button class="btn" onclick="reporteMantenimiento()">🔧 Clientes sin mantenimiento</button>
           <button class="btn" onclick="reporteOTA()">📡 Firmware instalado</button>
           <button class="btn" onclick="reportePendientes()">⏳ Presupuestos sin respuesta</button>
-          <button class="btn" onclick="reporteFinanciero()">💰 Resumen financiero</button>
           <button class="btn" onclick="reporteStockPrecios()">💲 Stock con precios</button>
+          <button class="btn" onclick="reporteOCporProveedor()">🛒 OC por proveedor</button>
           <button class="btn" onclick="reporteMantenimientos()">🛠️ Historial de mantenimientos</button>
           <button class="btn" onclick="reporteInstalaciones()">🔧 Estado de instalaciones</button>
           <button class="btn" onclick="reporteVencimientos()">⏰ Vencimientos de garantía</button>
