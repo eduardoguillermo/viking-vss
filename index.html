@@ -13,6 +13,20 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Viking Security Systems</title>
 
+<script>
+function toggleNav(el){
+  var items = el.nextElementSibling;
+  if(!items||!items.classList.contains('nav-section-items')) return;
+  var isCollapsed = items.style.display === 'none';
+  if(isCollapsed){
+    items.style.display = '';
+    el.innerHTML = el.innerHTML.replace('▸','▾');
+  } else {
+    items.style.display = 'none';
+    el.innerHTML = el.innerHTML.replace('▾','▸');
+  }
+}
+</script>
 </head>
 <body>
 
