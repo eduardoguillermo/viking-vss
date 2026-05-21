@@ -4713,15 +4713,91 @@ function renderKitInst(){
   }).join('');
 }
 
+function modalKitInstEditar(){
+  // Filter components with area Instalacion
+  var compsInst = DB.componentes.filter(function(c){
+    return c.area === 'Instalacion';
+  }).sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');});
+
+  if(!compsInst.length){
+    alert('No hay componentes con área "Instalacion" en el catálogo.');
+    return;
+  }
+
+  // Build kit map for quick lookup
+  var kitMap = {};
+  (DB.kitinst||[]).forEach(function(item){
+    kitMap[item.compId] = item.cant;
+  });
+
+  // Build table with all Instalacion components
+  var rows = compsInst.map(function(c){
+    var cant = kitMap[c.id]||0;
+    var stock = stockActual(c.id);
+    var stockColor = stock<=0?'var(--red)':stock<cant?'var(--amber)':'var(--green)';
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:5px 10px;font-family:monospace;font-size:11px">'+c.codigo+'</td>'+
+      '<td style="padding:5px 10px;font-size:12px">'+c.desc+'</td>'+
+      '<td style="padding:5px 10px;font-size:11px;color:var(--text2)">'+c.unidad+'</td>'+
+      '<td style="padding:5px 10px;font-weight:700;color:'+stockColor+'">'+stock+'</td>'+
+      '<td style="padding:5px 10px">'+
+        '<input type="number" min="0" value="'+cant+'" data-compid="'+c.id+'" '+
+        'style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:center">'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+
+  var body =
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">'+
+      'Ingresá la cantidad de cada componente. Poné <strong>0</strong> para excluirlo del kit.'+
+    '</div>'+
+    '<div style="max-height:400px;overflow-y:auto">'+
+    '<table style="width:100%;border-collapse:collapse">'+
+    '<thead><tr style="background:var(--surface2);position:sticky;top:0">'+
+      '<th style="padding:6px 10px;font-size:10px;text-align:left">Código</th>'+
+      '<th style="padding:6px 10px;font-size:10px;text-align:left">Descripción</th>'+
+      '<th style="padding:6px 10px;font-size:10px;text-align:left">Unidad</th>'+
+      '<th style="padding:6px 10px;font-size:10px;text-align:center">Stock</th>'+
+      '<th style="padding:6px 10px;font-size:10px;text-align:center">Cantidad en kit</th>'+
+    '</tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>';
+
+  openModal('Editar kit base de instalación', body, function(){
+    var inputs = document.querySelectorAll('#mbox input[data-compid]');
+    var newKit = [];
+    inputs.forEach(function(input){
+      var compId = parseInt(input.dataset.compid);
+      var cant = parseFloat(input.value)||0;
+      if(cant > 0){
+        var comp = DB.componentes.find(function(c){return c.id===compId;})||{};
+        newKit.push({
+          compId: compId,
+          compCodigo: comp.codigo||'',
+          compNombre: comp.desc||'',
+          cant: cant
+        });
+      }
+    });
+    DB.kitinst = newKit;
+    DB.kitinstVersion = (parseInt(DB.kitinstVersion||0)+1);
+    DB.kitinstFecha = today();
+    save();
+    renderKitInst();
+    return true;
+  });
+}
+
 function modalKitInstItem(idx){
+  // Keep for edit individual items from table
   var item=idx>=0?(DB.kitinst[idx]||{}):null;
-  var compSel=DB.componentes.map(function(c){
+  var compsInst=DB.componentes.filter(function(c){return c.area==='Instalacion';});
+  var compSel=compsInst.map(function(c){
     return '<option value="'+c.id+'"'+(item&&item.compId===c.id?' selected':'')+'>'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
 
-  openModal(idx>=0?'Editar material del kit base':'Agregar material al kit base',
+  openModal(idx>=0?'Editar material del kit':'Agregar material al kit',
     '<div class="fg2">'+
-      '<div class="fg full"><label>Componente</label>'+
+      '<div class="fg full"><label>Componente (área Instalación)</label>'+
         '<select id="ki-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
           '<option value="">— seleccionar —</option>'+compSel+
         '</select></div>'+
@@ -4731,7 +4807,7 @@ function modalKitInstItem(idx){
     function(){
       var compId=parseInt(document.getElementById('ki-comp').value)||0;
       var cant=parseFloat(document.getElementById('ki-cant').value)||0;
-      if(!compId||!cant){alert('Seleccioná componente y cantidad.');return false;}
+      if(!compId||!cant){alert('Seleccioná un componente e ingresá la cantidad.');return false;}
       var comp=DB.componentes.find(function(c){return c.id===compId;})||{};
       var newItem={compId:compId,compCodigo:comp.codigo||'',compNombre:comp.desc||'',cant:cant};
       if(idx>=0){DB.kitinst[idx]=newItem;}else{DB.kitinst.push(newItem);}
@@ -4741,6 +4817,7 @@ function modalKitInstItem(idx){
     }
   );
 }
+
 
 function eliminarKitInstItem(idx){
   if(!confirm('¿Eliminar este material del kit base?')) return;
