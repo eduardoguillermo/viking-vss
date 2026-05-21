@@ -746,9 +746,9 @@ function importarJSON(){
 
 function renderBackupInfo(){
   const c=DB.clientes;
-  const devs=c.reduce((a,x)=>a+x.zigbee.length,0);
-  const otas=c.reduce((a,x)=>a+x.ota.length,0);
-  const mantos=c.reduce((a,x)=>a+x.mant.length,0);
+  const devs=c.reduce((a,x)=>a+((x.zigbee&&x.zigbee.length)||0),0);
+  const otas=c.reduce((a,x)=>a+((x.ota&&x.ota.length)||0),0);
+  const mantos=c.reduce((a,x)=>a+((x.mant&&x.mant.length)||0),0);
   const kb=Math.round(JSON.stringify(DB).length/1024);
   document.getElementById('backup-info').innerHTML=`
     ${fbox('Clientes totales',c.length)}
