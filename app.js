@@ -224,7 +224,7 @@ setTimeout(function(){
   span.textContent = '💾 Recordatorio: hacé un backup de tus datos para no perderlos.';
   var btns = document.createElement('div');
   btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0';
-  btns.appendChild(btnExp); btns.appendChild(btnCer);
+  btns.appendChild(btnExp); btns.appendChild(btnDrive); btns.appendChild(btnCer);
   banner.appendChild(span); banner.appendChild(btns);
   document.body.appendChild(banner);
 }, 1500);
@@ -284,7 +284,7 @@ setTimeout(function(){
   span.textContent = '💾 Recordatorio: hacé un backup de tus datos para no perderlos.';
   var btns = document.createElement('div');
   btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0';
-  btns.appendChild(btnExp); btns.appendChild(btnCer);
+  btns.appendChild(btnExp); btns.appendChild(btnDrive); btns.appendChild(btnCer);
   banner.appendChild(span); banner.appendChild(btns);
   document.body.appendChild(banner);
 }, 1500);
@@ -312,8 +312,10 @@ function verCliente(id){
       </div>
     </div>`;
   SUBS.forEach(x=>{
-    document.getElementById('sp-'+x).classList.toggle('on',x==='datos');
-    document.getElementById('sni-'+x).classList.toggle('on',x==='datos');
+    var sp=document.getElementById('sp-'+x);
+    var sni=document.getElementById('sni-'+x);
+    if(sp) sp.classList.toggle('on',x==='datos');
+    if(sni) sni.classList.toggle('on',x==='datos');
   });
   renderDatos();
 }
@@ -3451,7 +3453,7 @@ setTimeout(function(){
   span.textContent = '💾 Recordatorio: hacé un backup de tus datos para no perderlos.';
   var btns = document.createElement('div');
   btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0';
-  btns.appendChild(btnExp); btns.appendChild(btnCer);
+  btns.appendChild(btnExp); btns.appendChild(btnDrive); btns.appendChild(btnCer);
   banner.appendChild(span); banner.appendChild(btns);
   document.body.appendChild(banner);
 }, 1500);
