@@ -4091,7 +4091,7 @@ function iniciarFabricacion(otId){
   }
 
   save();
-  closeModal();
+  cerrarModal();
   abrirOT(otId);
 }
 
@@ -4141,8 +4141,8 @@ function abrirOT(id){
       f.materiales.map(function(m){
         var enUso=m.cant-(m.devuelto||0);
         return '<tr style="border-bottom:1px solid var(--border)">'+
-          '<td style="padding:5px 10px;font-family:monospace;font-size:11px">'+m.compCodigo+'</td>'+
-          '<td style="padding:5px 10px;font-size:11px">'+m.compNombre+'</td>'+
+          '<td style="padding:5px 10px;font-family:monospace;font-size:11px">'+(function(){var c=DB.componentes.find(function(x){return x.id===m.compId;});return c?c.codigo:m.compCodigo||'—';})()+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px">'+(function(){var c=DB.componentes.find(function(x){return x.id===m.compId;});return c?c.desc:m.compNombre||'—';})()+'</td>'+
           '<td style="padding:5px 10px;text-align:center">'+m.cant+'</td>'+
           '<td style="padding:5px 10px;text-align:center;color:var(--text2)">'+(m.devuelto||0)+'</td>'+
           '<td style="padding:5px 10px;text-align:center;font-weight:700">'+enUso+'</td>'+
@@ -4221,7 +4221,7 @@ function completarEtapaFab(otId, etapaId){
   }
 
   save();
-  closeModal();
+  cerrarModal();
   abrirOT(otId);
 }
 
@@ -4257,7 +4257,7 @@ function agregarMaterialExtra(otId){
       var existing=f.materiales.find(function(m){return m.compId===compId;});
       if(existing){ existing.cant+=cant; }
       else { f.materiales.push({compId:compId,compCodigo:comp.codigo||'',compNombre:comp.desc||'',cant:cant,devuelto:0}); }
-      save(); closeModal(); abrirOT(otId); return true;
+      save(); cerrarModal(); abrirOT(otId); return true;
     }
   );
 }
@@ -4292,7 +4292,7 @@ function devolverMaterial(otId){
         tipo:'Entrada', motivo:'Devolución fabricación — '+f.nserie,
         ref:f.nserie, cant:cant, precio:0
       });
-      save(); closeModal(); abrirOT(otId); return true;
+      save(); cerrarModal(); abrirOT(otId); return true;
     }
   );
 }
