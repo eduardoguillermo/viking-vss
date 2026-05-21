@@ -1496,14 +1496,19 @@ function modalComponente(id){
         c.proveedor=document.getElementById('cp-prov').value;
         c.ubicacion=document.getElementById('cp-ubic').value;
       } else {
+        var newCosto=parseFloat(document.getElementById('cp-costo')?document.getElementById('cp-costo').value:0)||0;
         DB.componentes.push({
           id:DB.nid++,codigo:cod,desc:desc,categoria:cat,
           unidad:document.getElementById('cp-uni').value,
           min:parseFloat(document.getElementById('cp-min').value)||0,
-          precio:parseFloat(document.getElementById('cp-precio').value)||0,
+          costo:newCosto,
+          precio:newCosto,
+          costo_usd:parseFloat(document.getElementById('cp-costo-usd')?document.getElementById('cp-costo-usd').value:0)||0,
+          venta:parseFloat(document.getElementById('cp-venta')?document.getElementById('cp-venta').value:0)||0,
+          venta_usd:parseFloat(document.getElementById('cp-venta-usd')?document.getElementById('cp-venta-usd').value:0)||0,
           area:document.getElementById('cp-area')?document.getElementById('cp-area').value:'Fábrica',
-          proveedor:document.getElementById('cp-prov').value,
-          ubicacion:document.getElementById('cp-ubic').value
+          proveedor:document.getElementById('cp-prov')?document.getElementById('cp-prov').value:'',
+          ubicacion:document.getElementById('cp-ubic')?document.getElementById('cp-ubic').value:''
         });
       }
       save();renderCatalogo();return true;
@@ -2145,22 +2150,45 @@ function reporteContainer(titulo, html){
 }
 
 function reporteClientes(){
-  const modelos=['Base','Energy','Comfort','Black'];
-  const activos=DB.clientes.filter(function(c){return c.estado==='Activo';});
-  const bajas=DB.clientes.filter(function(c){return c.estado==='Baja';});
+  var modelos=['Base','Energy','Comfort','Black'];
+  var activos=DB.clientes.filter(function(c){return c.estado==='Activo';});
+  var bajas=DB.clientes.filter(function(c){return c.estado==='Baja';});
+
+  // Summary stats
   var h='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">';
   modelos.forEach(function(m){
-    const n=activos.filter(function(c){return c.modelo===m;}).length;
+    var n=activos.filter(function(c){return c.modelo===m;}).length;
     h+='<div class="stat"><div class="stat-n">'+n+'</div><div class="stat-l">'+m+'</div></div>';
   });
   h+='</div>';
-  h+='<table><thead><tr><th>Modelo</th><th>Activos</th><th>Bajas</th><th>Total</th></tr></thead><tbody>';
-  modelos.forEach(function(m){
-    const act=activos.filter(function(c){return c.modelo===m;}).length;
-    const baj=bajas.filter(function(c){return c.modelo===m;}).length;
-    h+='<tr><td>'+mPill(m)+'</td><td>'+act+'</td><td>'+baj+'</td><td>'+(act+baj)+'</td></tr>';
+
+  // Model filter
+  var fModelo=document.getElementById('rc-modelo')?document.getElementById('rc-modelo').value:'';
+  h+='<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">'+
+    '<label style="font-size:11px;color:var(--text2)">Filtrar por modelo:</label>'+
+    '<select id="rc-modelo" onchange="reporteClientes()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
+      '<option value="">Todos</option>'+
+      modelos.map(function(m){return '<option value="'+m+'"'+(m===fModelo?' selected':'')+'>'+m+'</option>';}).join('')+
+    '</select>'+
+    '<span style="font-size:11px;color:var(--text2)">'+
+      (fModelo?activos.filter(function(c){return c.modelo===fModelo;}).length:activos.length)+' cliente'+
+      ((fModelo?activos.filter(function(c){return c.modelo===fModelo;}).length:activos.length)!==1?'s':'')+' activos'+
+    '</span>'+
+  '</div>';
+
+  // Client list
+  var lista=activos.filter(function(c){return !fModelo||c.modelo===fModelo;})
+    .sort(function(a,b){return (a.modelo+a.nombre).localeCompare(b.modelo+b.nombre);});
+
+  h+='<table><thead><tr><th>Cliente</th><th>Lote / Barrio</th><th>Modelo</th><th>Fecha inst.</th></tr></thead><tbody>';
+  lista.forEach(function(c){
+    h+='<tr>'+
+      '<td><strong>'+c.nombre+'</strong></td>'+
+      '<td style="font-size:11px;color:var(--text2)">'+(c.lote||'')+(c.barrio?' · '+c.barrio:'')+'</td>'+
+      '<td>'+mPill(c.modelo)+'</td>'+
+      '<td style="font-size:11px">'+(c.fecha||'—')+'</td>'+
+    '</tr>';
   });
-  h+='<tr style="font-weight:700"><td>TOTAL</td><td>'+activos.length+'</td><td>'+bajas.length+'</td><td>'+DB.clientes.length+'</td></tr>';
   h+='</tbody></table>';
   reporteContainer('👥 Clientes por modelo', h);
 }
