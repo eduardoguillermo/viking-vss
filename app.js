@@ -603,6 +603,19 @@ function renderMant(){
     </tr>`).join('')}</tbody></table>`;
 }
 
+
+function getMantDatalist(campo, dlId){
+  var vals = [];
+  DB.clientes.forEach(function(c){
+    if(!c.mant) return;
+    c.mant.forEach(function(m){
+      if(m[campo]&&m[campo].trim()) vals.push(m[campo].trim());
+    });
+  });
+  vals = [...new Set(vals)].sort();
+  return '<datalist id="'+dlId+'">'+vals.map(function(v){return '<option value="'+v.replace(/"/g,"'")+'">';}).join('')+'</datalist>';
+}
+
 function modalMant(idx){
   const c=gc();
   const m=idx>=0?c.mant[idx]:{};
@@ -610,9 +623,9 @@ function modalMant(idx){
     <div class="fg2">
       <div class="fg"><label>Fecha *</label><input id="mt-f" type="date" value="${m.fecha||today()}"></div>
       <div class="fg"><label>Tipo *</label><select id="mt-ti">${['Correctivo','Configuración','Actualización','Cambio de pilas'].map(t=>`<option${(m.tipo||'')==t?' selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="fg"><label>Motivo del llamado *</label><input id="mt-mo" value="${m.motivo||''}" placeholder="Ej: Sirena no activa, falsa alarma..."></div>
-      <div class="fg"><label>Falla detectada</label><input id="mt-fa" value="${m.falla||''}" placeholder="Ej: Conexión suelta"></div>
-      <div class="fg"><label>Reparación realizada</label><input id="mt-re" value="${m.reparacion||''}" placeholder="Ej: Reconexión terminal"></div>
+      <div class="fg"><label>Motivo del llamado *</label><input id="mt-mo" value="${m.motivo||''}" placeholder="Ej: Sirena no activa, falsa alarma..." list="dl-mt-mo">${getMantDatalist('motivo','dl-mt-mo')}</div>
+      <div class="fg"><label>Falla detectada</label><input id="mt-fa" value="${m.falla||''}" placeholder="Ej: Conexión suelta" list="dl-mt-fa">${getMantDatalist('falla','dl-mt-fa')}</div>
+      <div class="fg"><label>Reparación realizada</label><input id="mt-re" value="${m.reparacion||''}" placeholder="Ej: Reconexión terminal" list="dl-mt-re">${getMantDatalist('reparacion','dl-mt-re')}</div>
       <div class="fg"><label>En garantía</label><select id="mt-g"><option${(m.garantia||'No')==='No'?' selected':''}>No</option><option${(m.garantia||'')==='Sí'?' selected':''}>Sí</option></select></div>
       <div class="fg"><label>Costo ($)</label><input id="mt-c" type="number" min="0" value="${m.costo||0}"></div>
       <div class="fg"><label>Técnico</label><input id="mt-te" value="${m.tecnico||''}" placeholder="Nombre del técnico"></div>
@@ -2409,10 +2422,14 @@ function reporteMantenimientos(){
   var fDesde = document.getElementById('rm-desde')?document.getElementById('rm-desde').value:'';
   var fHasta = document.getElementById('rm-hasta')?document.getElementById('rm-hasta').value:'';
   var fOrden = document.getElementById('rm-orden')?document.getElementById('rm-orden').value:'fecha-desc';
+  var fMotivo = document.getElementById('rm-motivo')?document.getElementById('rm-motivo').value:'';
+  var fSolucion = document.getElementById('rm-solucion')?document.getElementById('rm-solucion').value:'';
 
   var lista = todos.filter(function(m){
     return (!fCliente||m.cliente.toLowerCase().includes(fCliente.toLowerCase())) &&
            (!fTipo||m.tipo===fTipo) &&
+           (!fMotivo||m.motivo.toLowerCase().includes(fMotivo.toLowerCase())) &&
+           (!fSolucion||m.solucion.toLowerCase().includes(fSolucion.toLowerCase())) &&
            (!fDesde||m.fecha>=fDesde) &&
            (!fHasta||m.fecha<=fHasta);
   });
@@ -2448,6 +2465,12 @@ function reporteMantenimientos(){
       '<select id="rm-tipo" onchange="reporteMantenimientos()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
         '<option value="">Todos</option>'+tipos.map(function(t){return '<option'+(t===fTipo?' selected':'')+'>'+t+'</option>';}).join('')+
       '</select></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Motivo</label>'+
+      '<input id="rm-motivo" value="'+fMotivo+'" placeholder="Filtrar motivo..." oninput="reporteMantenimientos()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Solución</label>'+
+      '<input id="rm-solucion" value="'+fSolucion+'" placeholder="Filtrar solución..." oninput="reporteMantenimientos()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Desde</label>'+
       '<input id="rm-desde" type="date" value="'+fDesde+'" onchange="reporteMantenimientos()" '+
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
