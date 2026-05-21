@@ -1473,7 +1473,7 @@ function modalComponente(id){
       '<datalist id="dl-cp-prov">'+(DB.proveedores.map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join(''))+'</datalist></div>'+
       '<div class="fg"><label>Área *</label>'+
         '<select id="cp-area" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          ['Fábrica','Mantenimiento','Instalacion','Ambas'].map(function(a){return '<option'+(c&&c.area===a?' selected':'')+'>'+a+'</option>';}).join('')+
+          ['Fábrica','Mantenimiento','Instalacion'].map(function(a){return '<option'+(c&&c.area===a?' selected':'')+'>'+a+'</option>';}).join('')+
         '</select></div>'+
       '<div class="fg"><label>Ubicación</label><input id="cp-ubic" value="'+(c?c.ubicacion||'':'')+'" placeholder="Ej: Estante A, cajón 3" list="dl-cp-ubic">'+
       '<datalist id="dl-cp-ubic">'+(function(){var u=[...new Set(DB.componentes.filter(function(x){return x.ubicacion;}).map(function(x){return x.ubicacion;}))];return u.map(function(u){return '<option value="'+u+'">'+u+'</option>';}).join('');})()+'</datalist></div>'+
@@ -2775,22 +2775,30 @@ function renderReportes(){
   h += '</div>';
 
   // Clientes por modelo
-  h += '<div class="card" style="margin-bottom:12px"><div class="ch"><div class="ct">👥 Clientes activos por modelo</div></div><div class="card-body">';
-  modelos.forEach(function(m){
-    var clientesMod = DB.clientes.filter(function(c){return c.estado==='Activo'&&c.modelo===m;});
-    if(!clientesMod.length) return;
-    h += '<div style="margin-bottom:10px">';
-    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+mPill(m)+'<strong>'+clientesMod.length+' cliente'+(clientesMod.length!==1?'s':'')+'</strong></div>';
-    h += '<table style="width:100%;border-collapse:collapse">';
-    clientesMod.forEach(function(c){
-      h += '<tr style="border-bottom:1px solid var(--border)">'+
-        '<td style="padding:4px 10px;font-size:11px">'+c.nombre+'</td>'+
-        '<td style="padding:4px 10px;font-size:11px;color:var(--text2)">'+( c.lote||'')+(c.barrio?' · '+c.barrio:'')+'</td>'+
-      '</tr>';
-    });
-    h += '</table></div>';
+  // Clientes list with model filter
+  var fModelo = document.getElementById('rep-modelo')?document.getElementById('rep-modelo').value:'';
+  var clientesActivos = DB.clientes.filter(function(c){
+    return c.estado==='Activo' && (!fModelo||c.modelo===fModelo);
+  }).sort(function(a,b){return (a.modelo+a.nombre).localeCompare(b.modelo+b.nombre);});
+
+  h += '<div class="card" style="margin-bottom:12px">';
+  h += '<div class="ch"><div class="ct">👥 Clientes activos por modelo</div>';
+  h += '<select id="rep-modelo" onchange="renderReportes()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
+    '<option value="">Todos los modelos</option>'+
+    modelos.map(function(m){return '<option value="'+m+'"'+(m===fModelo?' selected':'')+'>'+m+'</option>';}).join('')+
+  '</select></div>';
+  h += '<div class="card-body">';
+  h += '<table style="width:100%;border-collapse:collapse">';
+  h += '<thead><tr style="background:var(--surface2)"><th style="padding:6px 10px;font-size:11px;text-align:left">Cliente</th><th style="padding:6px 10px;font-size:11px;text-align:left">Ubicación</th><th style="padding:6px 10px;font-size:11px;text-align:left">Modelo</th><th style="padding:6px 10px;font-size:11px">Inst.</th></tr></thead><tbody>';
+  clientesActivos.forEach(function(c){
+    h += '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:5px 10px;font-size:11px"><strong>'+c.nombre+'</strong></td>'+
+      '<td style="padding:5px 10px;font-size:11px;color:var(--text2)">'+(c.lote||'')+(c.barrio?' · '+c.barrio:'')+'</td>'+
+      '<td style="padding:5px 10px">'+mPill(c.modelo)+'</td>'+
+      '<td style="padding:5px 10px;font-size:11px">'+(c.fecha||'—')+'</td>'+
+    '</tr>';
   });
-  h += '</div>';
+  h += '</tbody></table></div></div>';
 
   // Presupuestos
   h += '<div class="card"><div class="ch"><div class="ct">📄 Presupuestos</div></div><div class="card-body">';
