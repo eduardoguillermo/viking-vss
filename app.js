@@ -50,6 +50,10 @@ if(!DB.movimientos) DB.movimientos = [];
 if(!DB.ordenes) DB.ordenes = [];
 if(!DB.proveedores) DB.proveedores = [];
 if(!DB.gestiones) DB.gestiones = [];
+if(!DB.fabricacion) DB.fabricacion = [];
+if(!DB.kit) DB.kit = [];
+if(!DB.kitVersion) DB.kitVersion = 1;
+if(!DB.kitFecha) DB.kitFecha = today();
 // Migrate ordenes - add numero if missing
 DB.ordenes.forEach(function(o,i){
   if(!o.numero) o.numero = 'OC-'+( o.fecha?o.fecha.slice(0,4):new Date().getFullYear())+'-'+String(i+1).padStart(4,'0');
@@ -73,7 +77,7 @@ function save(){ localStorage.setItem(SKEY,JSON.stringify(DB)); }
 // NAV
 // =======================================================
 let curCid=null, curSub='datos';
-const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos'];
+const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos','fabricacion','kit'];
 
 function goTo(p){
   PANELS.forEach(x=>{
@@ -94,6 +98,8 @@ function goTo(p){
   if(p==='versiones') renderVersiones();
   if(p==='tipos') renderTipos();
   if(p==='backup') renderBackupInfo();
+  if(p==='fabricacion') renderFabricacion();
+  if(p==='kit') renderKit();
   if(p==='presupuestos') renderPresupuestos();
   if(p==='stock') renderStock();
   if(p==='catalogo') renderCatalogo();
@@ -354,7 +360,7 @@ function renderDatos(){
     <div style="margin-top:8px">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--text2)">Estado:</span>
-        ${['Pendiente','En curso','Completada'].map(s=>
+        ${['Programado','En fabricación','Terminado','Pendiente','En curso','Completada'].map(s=>
           '<button onclick="setEstadoInstalacion('+c.id+',\''+s+'\')" style="padding:3px 10px;border-radius:12px;font-size:11px;border:1px solid var(--border);cursor:pointer;background:'+(c.estadoInstalacion===s?'var(--primary)':'var(--surface2)')+';color:'+(c.estadoInstalacion===s?'#fff':'var(--text)')+'">'+s+'</button>'
         ).join('')}
       </div>
@@ -3845,6 +3851,400 @@ function reporteOCporProveedor(){
 
   reporteContainer('🛒 OC por proveedor', h);
 }
+
+
+// =======================================================
+// FABRICACION
+// =======================================================
+
+var ETAPAS_FAB = [
+  { id:'mecanica', label:'Mecánica', ops:[
+    'Perforación de la caja',
+    'Alojamiento de partes pesadas'
+  ]},
+  { id:'electrica', label:'Eléctrica', ops:[
+    'Ensayo en banco del sistema UPS',
+    'Verificación de voltajes y corrientes',
+    'Verificación de corte por baja tensión de batería'
+  ]},
+  { id:'electronica', label:'Electrónica', ops:[
+    'Conexión módulo de sirena',
+    'Conexión módulo de falta de energía'
+  ]},
+  { id:'sistema', label:'Sistema', ops:[
+    'Configurar micro con datos de red WiFi del taller',
+    'Configurar Chat ID cliente',
+    'Configurar Chat ID guardia',
+    'Descargar sketch en el micro',
+    'Vincular sensores de prueba (Puerta, Botón, Agua, Router)'
+  ]},
+  { id:'pruebas', label:'Configuración y pruebas', ops:[
+    'Acceso a WiFi',
+    'Prueba aviso corte de energía vía Telegram (usuario y guardia)',
+    'Prueba sirena',
+    'Prueba comando /armar, /desarmar, pánico',
+    'Prueba sensores (disparo por apertura y botón)',
+    'Prueba características del modelo'
+  ]},
+  { id:'entrega', label:'Entrega', ops:[]}
+];
+
+var MODELO_LETRA = {Base:'B', Energy:'E', Comfort:'C', Black:'K'};
+
+function getNumSerie(modelo, lote){
+  var letra = MODELO_LETRA[modelo]||'X';
+  var now = new Date();
+  var aa = String(now.getFullYear()).slice(2);
+  var mm = String(now.getMonth()+1).padStart(2,'0');
+  var ll = String(lote).padStart(2,'0');
+  // Count existing equipos in this lote
+  var enLote = (DB.fabricacion||[]).filter(function(f){return f.lote===parseInt(lote);}).length;
+  var nnn = String(enLote+1).padStart(3,'0');
+  return letra+'-'+aa+'-'+mm+'-'+ll+'-'+nnn;
+}
+
+function renderFabricacion(){
+  if(!DB.fabricacion) DB.fabricacion=[];
+  var q=(document.getElementById('q-fab')?document.getElementById('q-fab').value||'':'').toLowerCase();
+  var fest=document.getElementById('fab-estado-filter')?document.getElementById('fab-estado-filter').value:'';
+
+  var lista=DB.fabricacion.filter(function(f){
+    return (!q||(f.nserie+f.cliente+f.modelo).toLowerCase().includes(q)) &&
+           (!fest||f.estado===fest);
+  }).sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});
+
+  // Stats
+  var enFab=(DB.fabricacion||[]).filter(function(f){return f.estado==='En fabricación';}).length;
+  var term=(DB.fabricacion||[]).filter(function(f){return f.estado==='Terminado';}).length;
+  var entregados=(DB.fabricacion||[]).filter(function(f){return f.estado==='Entregado';}).length;
+  var el=document.getElementById('fab-stats');
+  if(el) el.innerHTML='<div class="stat"><div class="stat-n blue">'+enFab+'</div><div class="stat-l">En fabricación</div></div>'+
+    '<div class="stat"><div class="stat-n green">'+term+'</div><div class="stat-l">Terminados</div></div>'+
+    '<div class="stat"><div class="stat-n">'+entregados+'</div><div class="stat-l">Entregados</div></div>'+
+    '<div class="stat"><div class="stat-n amber">'+(DB.fabricacion||[]).length+'</div><div class="stat-l">Total equipos</div></div>';
+
+  var tb=document.getElementById('tbody-fab');
+  if(!lista.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin órdenes de trabajo.</td></tr>';return;}
+
+  tb.innerHTML=lista.map(function(f){
+    var etapaActual=ETAPAS_FAB.find(function(e){return e.id===f.etapaActual;})||ETAPAS_FAB[0];
+    var pct=Math.round((ETAPAS_FAB.indexOf(etapaActual)/ETAPAS_FAB.length)*100);
+    var estadoColor=f.estado==='En fabricación'?'p-b':f.estado==='Terminado'?'p-g':f.estado==='Entregado'?'p-g':'p-r';
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:11px;font-weight:700">'+f.nserie+'</td>'+
+      '<td>'+mPill(f.modelo)+'</td>'+
+      '<td style="text-align:center">'+f.lote+'</td>'+
+      '<td style="font-size:11px">'+(f.cliente||'Stock')+'</td>'+
+      '<td>'+
+        '<div style="font-size:10px;color:var(--text2);margin-bottom:2px">'+etapaActual.label+'</div>'+
+        '<div style="background:var(--surface2);border-radius:3px;height:5px;overflow:hidden">'+
+          '<div style="height:100%;background:var(--primary);width:'+pct+'%"></div>'+
+        '</div>'+
+      '</td>'+
+      '<td><span class="pill '+estadoColor+'">'+f.estado+'</span></td>'+
+      '<td style="font-size:11px">'+(f.fecha||'—')+'</td>'+
+      '<td><button class="btn btn-sm btn-p" onclick="abrirOT('+f.id+')">📋</button></td>'+
+    '</tr>';
+  }).join('');
+}
+
+function modalNuevaOT(){
+  var presList=DB.presupuestos.filter(function(p){return p.estado==='Aprobado';});
+  var provsList=DB.proveedores||[];
+  var loteMax=(DB.fabricacion||[]).reduce(function(a,f){return Math.max(a,f.lote||0);},0);
+
+  openModal('Nueva orden de trabajo',
+    '<div class="fg2">'+
+      '<div class="fg"><label>Origen</label>'+
+        '<select id="ot-origen" onchange="toggleOTCliente()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          '<option value="manual">Manual (para stock)</option>'+
+          '<option value="presupuesto">Desde presupuesto aprobado</option>'+
+        '</select></div>'+
+      '<div class="fg" id="ot-pres-wrap" style="display:none"><label>Presupuesto</label>'+
+        '<select id="ot-presupuesto" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          '<option value="">— seleccionar —</option>'+
+          presList.map(function(p){return '<option value="'+p.id+'">'+presNum(p)+' — '+p.nombre+'</option>';}).join('')+
+        '</select></div>'+
+      '<div class="fg"><label>Modelo</label>'+
+        '<select id="ot-modelo" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          ['Base','Energy','Comfort','Black'].map(function(m){return '<option>'+m+'</option>';}).join('')+
+        '</select></div>'+
+      '<div class="fg"><label>N° de lote</label>'+
+        '<input id="ot-lote" type="number" min="1" value="'+(loteMax+1)+'"></div>'+
+      '<div class="fg full"><label>Observaciones</label>'+
+        '<input id="ot-obs" placeholder="Observaciones..."></div>'+
+    '</div>',
+    function(){
+      var modelo=document.getElementById('ot-modelo').value;
+      var lote=parseInt(document.getElementById('ot-lote').value)||1;
+      var origen=document.getElementById('ot-origen').value;
+      var presId=document.getElementById('ot-presupuesto')?parseInt(document.getElementById('ot-presupuesto').value)||null:null;
+      var pres=presId?DB.presupuestos.find(function(p){return p.id===presId;}):null;
+      var cliente=pres?pres.nombre:'';
+      var nserie=getNumSerie(modelo,lote);
+
+      // Verificar stock contra kit
+      var kit=DB.kit||[];
+      var faltantes=[];
+      kit.forEach(function(item){
+        var disponible=stockActual(item.compId);
+        if(disponible<item.cant) faltantes.push({comp:item.compNombre,necesita:item.cant,tiene:disponible});
+      });
+
+      if(faltantes.length){
+        var msg='⚠️ Stock insuficiente para estos materiales:\n\n';
+        faltantes.forEach(function(f){msg+=f.comp+': necesita '+f.necesita+', hay '+f.tiene+'\n';});
+        msg+='\n¿Deseas continuar de todas formas?';
+        if(!confirm(msg)) return false;
+      }
+
+      // Create OT
+      var ot={
+        id:DB.nid++,
+        nserie:nserie,
+        modelo:modelo,
+        lote:lote,
+        cliente:cliente,
+        presId:presId||null,
+        fecha:today(),
+        estado:'En fabricación',
+        etapaActual:'mecanica',
+        obs:document.getElementById('ot-obs').value,
+        etapas:{},
+        materiales:[]
+      };
+
+      // Initialize etapas
+      ETAPAS_FAB.forEach(function(e){
+        ot.etapas[e.id]={completada:false,fecha:'',responsable:'',obs:'',ops:{}};
+        e.ops.forEach(function(op){ot.etapas[e.id].ops[op]=false;});
+      });
+
+      // Salida de stock
+      if(kit.length && confirm('¿Confirmar salida de materiales del kit para N° serie '+nserie+'?')){
+        kit.forEach(function(item){
+          DB.movimientos.push({
+            id:DB.nid++,
+            compId:item.compId,
+            fecha:today(),
+            tipo:'Salida',
+            motivo:'Fabricación',
+            ref:nserie,
+            cant:item.cant,
+            precio:0
+          });
+        });
+        ot.materiales=kit.map(function(item){return {compId:item.compId,compNombre:item.compNombre,cant:item.cant,devuelto:0};});
+      }
+
+      DB.fabricacion.push(ot);
+      save();
+      renderFabricacion();
+      return true;
+    }
+  );
+}
+
+function toggleOTCliente(){
+  var origen=document.getElementById('ot-origen').value;
+  var wrap=document.getElementById('ot-pres-wrap');
+  if(wrap) wrap.style.display=origen==='presupuesto'?'':'none';
+}
+
+function abrirOT(id){
+  var f=DB.fabricacion.find(function(x){return x.id===id;});
+  if(!f) return;
+
+  var etapasHTML=ETAPAS_FAB.map(function(e,ei){
+    var et=f.etapas[e.id]||{completada:false,fecha:'',responsable:'',obs:'',ops:{}};
+    var etapaIdx=ETAPAS_FAB.findIndex(function(x){return x.id===f.etapaActual;});
+    var esActual=e.id===f.etapaActual;
+    var completada=et.completada;
+    var bloqueada=ei>etapaIdx&&!completada;
+
+    var opsHTML=e.ops.map(function(op){
+      var checked=et.ops[op]?'checked':'';
+      var disabled=bloqueada?'disabled':'';
+      return '<label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;cursor:'+(bloqueada?'not-allowed':'pointer')+'">'+
+        '<input type="checkbox" '+checked+' '+disabled+' onchange="toggleOpFab('+id+',\''+e.id+'\',\''+op.replace(/'/g,'\\\'')+'\')" style="margin:0">'+
+        '<span style="'+(et.ops[op]?'text-decoration:line-through;color:var(--text2)':'')+'">'+op+'</span>'+
+      '</label>';
+    }).join('');
+
+    var headerColor=completada?'var(--green)':esActual?'var(--primary)':'var(--text2)';
+    var headerIcon=completada?'✅':esActual?'▶️':'⬜';
+
+    return '<div class="card" style="margin-bottom:10px;border-left:3px solid '+headerColor+'">'+
+      '<div class="ch">'+
+        '<div class="ct" style="color:'+headerColor+'">'+headerIcon+' '+(ei+1)+'. '+e.label+'</div>'+
+        (esActual&&!completada?
+          '<button class="btn btn-sm btn-g" onclick="completarEtapaFab('+id+',\''+e.id+'\')">✔ Marcar etapa completa</button>':
+          (completada?'<span style="font-size:11px;color:var(--green)">Completada '+et.fecha+'</span>':'')
+        )+
+      '</div>'+
+      '<div class="card-body">'+
+        (e.ops.length?opsHTML:'<span style="color:var(--text2);font-size:11px">Sin operaciones definidas</span>')+
+        (esActual?
+          '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'+
+            '<input id="fab-resp-'+e.id+'" placeholder="Responsable" value="'+(et.responsable||'')+'" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;flex:1">'+
+            '<input id="fab-obs-'+e.id+'" placeholder="Observaciones" value="'+(et.obs||'')+'" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;flex:2">'+
+          '</div>':'')
+      +'</div></div>';
+  }).join('');
+
+  // Materiales
+  var matHTML='';
+  if(f.materiales&&f.materiales.length){
+    matHTML='<div class="card" style="margin-bottom:10px"><div class="ch"><div class="ct">📦 Materiales asignados</div>'+
+      '<button class="btn btn-sm" onclick="devolverMaterial('+id+')">↩️ Devolver material</button></div>'+
+      '<div class="card-body"><table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr><th>Componente</th><th style="text-align:center">Cant. asignada</th><th style="text-align:center">Devuelto</th></tr></thead><tbody>'+
+      f.materiales.map(function(m){
+        return '<tr><td>'+m.compNombre+'</td>'+
+          '<td style="text-align:center">'+m.cant+'</td>'+
+          '<td style="text-align:center">'+(m.devuelto||0)+'</td></tr>';
+      }).join('')+'</tbody></table></div></div>';
+  }
+
+  openModal('OT — '+f.nserie+' / Zpro '+f.modelo+' / '+( f.cliente||'Stock'),
+    '<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+      '<span class="pill p-b">'+f.nserie+'</span>'+
+      mPill(f.modelo)+
+      '<span class="pill '+(f.estado==='En fabricación'?'p-b':f.estado==='Terminado'?'p-g':'p-r')+'">'+f.estado+'</span>'+
+      '<span style="font-size:11px;color:var(--text2)">Lote '+f.lote+' · '+f.fecha+'</span>'+
+    '</div>'+
+    matHTML+
+    etapasHTML,
+    null
+  );
+}
+
+function toggleOpFab(otId, etapaId, op){
+  var f=DB.fabricacion.find(function(x){return x.id===otId;});
+  if(!f||!f.etapas[etapaId]) return;
+  f.etapas[etapaId].ops[op]=!f.etapas[etapaId].ops[op];
+  save();
+}
+
+function completarEtapaFab(otId, etapaId){
+  var f=DB.fabricacion.find(function(x){return x.id===otId;});
+  if(!f) return;
+
+  // Save responsable and obs
+  var respEl=document.getElementById('fab-resp-'+etapaId);
+  var obsEl=document.getElementById('fab-obs-'+etapaId);
+  if(!f.etapas[etapaId]) f.etapas[etapaId]={completada:false,fecha:'',responsable:'',obs:'',ops:{}};
+  f.etapas[etapaId].responsable=respEl?respEl.value:'';
+  f.etapas[etapaId].obs=obsEl?obsEl.value:'';
+  f.etapas[etapaId].completada=true;
+  f.etapas[etapaId].fecha=today();
+
+  // Advance to next etapa
+  var etapaIdx=ETAPAS_FAB.findIndex(function(e){return e.id===etapaId;});
+  if(etapaIdx<ETAPAS_FAB.length-1){
+    f.etapaActual=ETAPAS_FAB[etapaIdx+1].id;
+  } else {
+    f.estado='Terminado';
+    f.etapaActual='entrega';
+  }
+
+  save();
+  closeModal();
+  abrirOT(otId);
+}
+
+function devolverMaterial(otId){
+  var f=DB.fabricacion.find(function(x){return x.id===otId;});
+  if(!f||!f.materiales||!f.materiales.length) return;
+
+  var selHTML='<select id="dev-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%;margin-bottom:8px">'+
+    f.materiales.filter(function(m){return m.cant>(m.devuelto||0);}).map(function(m){
+      return '<option value="'+m.compId+'">'+m.compNombre+' (disponible: '+(m.cant-(m.devuelto||0))+')</option>';
+    }).join('')+'</select>'+
+    '<input id="dev-cant" type="number" min="1" value="1" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">';
+
+  openModal('Devolver material al stock', selHTML, function(){
+    var compId=parseInt(document.getElementById('dev-comp').value);
+    var cant=parseFloat(document.getElementById('dev-cant').value)||0;
+    if(!cant) return false;
+
+    var mat=f.materiales.find(function(m){return m.compId===compId;});
+    if(!mat) return false;
+    mat.devuelto=(mat.devuelto||0)+cant;
+
+    // Create entrada in stock
+    DB.movimientos.push({
+      id:DB.nid++, compId:compId, fecha:today(),
+      tipo:'Entrada', motivo:'Devolución fabricación',
+      ref:f.nserie, cant:cant, precio:0
+    });
+
+    save(); return true;
+  });
+}
+
+// KIT DE FABRICACION =====================================
+function renderKit(){
+  if(!DB.kit) DB.kit=[];
+  var ver=document.getElementById('kit-version');
+  if(ver) ver.textContent='Versión '+DB.kitVersion+' · '+DB.kitFecha;
+
+  var tb=document.getElementById('tbody-kit');
+  if(!DB.kit.length){tb.innerHTML='<tr><td colspan="5" class="empty">Sin materiales en el kit.</td></tr>';return;}
+
+  tb.innerHTML=DB.kit.map(function(item,i){
+    var comp=DB.componentes.find(function(c){return c.id===item.compId;})||{};
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:11px">'+(comp.codigo||'—')+'</td>'+
+      '<td>'+(comp.desc||item.compNombre||'—')+'</td>'+
+      '<td style="text-align:center;font-weight:700">'+item.cant+'</td>'+
+      '<td>'+(comp.unidad||'—')+'</td>'+
+      '<td style="display:flex;gap:3px">'+
+        '<button class="btn btn-sm" onclick="modalKitItem('+i+')">✏️</button>'+
+        '<button class="btn btn-sm" style="color:var(--red)" onclick="eliminarKitItem('+i+')">🗑️</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function modalKitItem(idx){
+  var item=idx>=0?(DB.kit[idx]||{}):null;
+  var compSel=DB.componentes.map(function(c){
+    return '<option value="'+c.id+'"'+(item&&item.compId===c.id?' selected':'')+'>'+c.codigo+' — '+c.desc+'</option>';
+  }).join('');
+
+  openModal(idx>=0?'Editar material del kit':'Agregar material al kit',
+    '<div class="fg2">'+
+      '<div class="fg full"><label>Componente</label>'+
+        '<select id="kit-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          '<option value="">— seleccionar componente —</option>'+compSel+
+        '</select></div>'+
+      '<div class="fg"><label>Cantidad</label>'+
+        '<input id="kit-cant" type="number" min="1" value="'+(item?item.cant:1)+'"></div>'+
+    '</div>',
+    function(){
+      var compId=parseInt(document.getElementById('kit-comp').value)||0;
+      var cant=parseFloat(document.getElementById('kit-cant').value)||0;
+      if(!compId||!cant){alert('Seleccioná un componente e ingresá la cantidad.');return false;}
+      var comp=DB.componentes.find(function(c){return c.id===compId;})||{};
+      var newItem={compId:compId,compNombre:comp.desc||'',cant:cant};
+      if(idx>=0){DB.kit[idx]=newItem;}else{DB.kit.push(newItem);}
+      // Update version
+      DB.kitVersion=(parseInt(DB.kitVersion||0)+1);
+      DB.kitFecha=today();
+      save(); renderKit(); return true;
+    }
+  );
+}
+
+function eliminarKitItem(idx){
+  if(!confirm('¿Eliminar este material del kit?')) return;
+  DB.kit.splice(idx,1);
+  DB.kitVersion=(parseInt(DB.kitVersion||0)+1);
+  DB.kitFecha=today();
+  save(); renderKit();
+}
+
 
 // INIT
 // =======================================================

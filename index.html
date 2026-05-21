@@ -54,6 +54,10 @@
   <div class="ni" id="nav-ordenes" onclick="goTo('ordenes')"><span class="ni-icon">🛒</span>Órdenes de compra</div>
   <div class="ni" id="nav-proveedores" onclick="goTo('proveedores')"><span class="ni-icon">🏭</span>Proveedores</div>
 
+  <div class="ns">🔧 Fabricación</div>
+  <div class="ni" id="nav-fabricacion" onclick="goTo('fabricacion')"><span class="ni-icon">🔧</span>Órdenes de trabajo</div>
+  <div class="ni" id="nav-kit" onclick="goTo('kit')"><span class="ni-icon">📋</span>Kit de fabricación</div>
+
   <div class="ns">📊 Análisis</div>
   <div class="ni" id="nav-reportes" onclick="goTo('reportes')"><span class="ni-icon">📊</span>Reportes</div>
 
@@ -209,6 +213,55 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- FABRICACION -->
+    <div class="panel" id="panel-fabricacion">
+      <div class="sbar">
+        <input type="text" id="q-fab" placeholder="🔍 Buscar por N° serie, cliente..." oninput="renderFabricacion()">
+        <select id="fab-estado-filter" onchange="renderFabricacion()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">
+          <option value="">Todos los estados</option>
+          <option>En fabricación</option>
+          <option>Terminado</option>
+          <option>Entregado</option>
+          <option>Cancelado</option>
+        </select>
+        <button class="btn btn-p" onclick="modalNuevaOT()">➕ Nueva orden de trabajo</button>
+      </div>
+      <div class="stats stats-4" id="fab-stats"></div>
+      <div class="card">
+        <div class="twrap">
+          <table>
+            <thead><tr>
+              <th>N° Serie</th><th>Modelo</th><th>Lote</th><th>Cliente</th>
+              <th>Etapa actual</th><th>Estado</th><th>Fecha</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="tbody-fab"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- KIT DE FABRICACION -->
+    <div class="panel" id="panel-kit">
+      <div class="sbar">
+        <div class="card-title" style="font-size:14px;font-weight:700">📋 Kit de fabricación</div>
+        <button class="btn btn-p" onclick="modalKitItem(-1)">➕ Agregar material</button>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Materiales del kit estándar</div>
+          <div style="font-size:11px;color:var(--text2)" id="kit-version"></div>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead><tr>
+              <th>Componente</th><th>Descripción</th><th style="text-align:center">Cantidad</th><th>Unidad</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="tbody-kit"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- VERSIONES -->
