@@ -3297,11 +3297,38 @@ function renderActa(){
       '</div>'+
       '<button class="btn btn-p" onclick="generarPDFActa('+c.id+')">📄 Generar acta PDF</button>'+
     '</div>'+
-    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-size:12px;color:var(--text2)">'+
+    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-size:12px;color:var(--text2);margin-bottom:12px">'+
       'El acta de recepción y conformidad certifica que el cliente recibió el sistema instalado y funcionando correctamente. '+
-      'Su firma da inicio al período de garantía.<br><br>'+
-      'El PDF generado incluye: datos del cliente, sistema instalado, dispositivos Zigbee registrados y espacios para firma.'+
-    '</div>';
+      'Su firma da inicio al período de garantía.'+
+    '</div>'+
+    '<hr class="div">'+
+    '<div class="sectitle" style="margin-bottom:10px">Archivo del acta firmada</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+      '<div class="fg" style="margin:0"><label>N° de archivo físico</label>'+
+        '<input id="acta-numfisico" value="'+(c.actaNumFisico||'')+'" placeholder="Ej: ACT-2026-001" '+
+        'onblur="saveActaDatos('+c.id+')"></div>'+
+      '<div class="fg" style="margin:0"><label>Fecha de firma</label>'+
+        '<input id="acta-fechafirma" type="date" value="'+(c.actaFechaFirma||'')+'" '+
+        'onchange="saveActaDatos('+c.id+')"></div>'+
+      '<div class="fg" style="grid-column:1/-1;margin:0"><label>Link al archivo en Drive / OneDrive</label>'+
+        '<input id="acta-link" value="'+(c.actaLink||'')+'" placeholder="https://drive.google.com/..." '+
+        'onblur="saveActaDatos('+c.id+')"></div>'+
+      '<div class="fg" style="grid-column:1/-1;margin:0"><label>Observaciones del acta</label>'+
+        '<input id="acta-obs" value="'+(c.actaObs||'')+'" placeholder="Ej: Firmada por propietario, copia entregada..." '+
+        'onblur="saveActaDatos('+c.id+')"></div>'+
+    '</div>'+
+    (c.actaLink?'<div style="margin-top:10px"><a href="'+c.actaLink+'" target="_blank" class="btn btn-sm" style="color:var(--blue);border-color:var(--blue)">☁️ Abrir archivo en Drive</a></div>':'');
+}
+
+function saveActaDatos(cid){
+  var c = DB.clientes.find(function(x){return x.id===cid;});
+  if(!c) return;
+  var g = function(id){var el=document.getElementById(id);return el?el.value:'';};
+  c.actaNumFisico = g('acta-numfisico');
+  c.actaFechaFirma = g('acta-fechafirma');
+  c.actaLink = g('acta-link');
+  c.actaObs = g('acta-obs');
+  save();
 }
 
 function generarPDFActa(cid){
