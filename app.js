@@ -2371,6 +2371,168 @@ function reporteHistorialPres(){
   reporteContainer('📋 Historial de presupuestos', h);
 }
 
+
+function reporteMantenimientos(){
+  var hoy = today();
+  var tc = (DB.config&&DB.config.tipoCambio)||1;
+
+  // Build full list of mantenimientos across all clients
+  var todos = [];
+  DB.clientes.forEach(function(c){
+    if(!c.mant||!c.mant.length) return;
+    c.mant.forEach(function(m){
+      todos.push({
+        cliente: c.nombre,
+        lote: c.lote||'',
+        barrio: c.barrio||'',
+        modelo: c.modelo||'Base',
+        fecha: m.fecha||'',
+        tipo: m.tipo||'—',
+        motivo: m.motivo||'—',
+        falla: m.falla||'—',
+        solucion: m.solucion||'—',
+        garantia: m.garantia||'No',
+        costo: parseFloat(m.costo)||0,
+        tecnico: m.tecnico||'—'
+      });
+    });
+  });
+
+  if(!todos.length){
+    reporteContainer('🔧 Historial de mantenimientos','<div class="empty">Sin registros de mantenimiento.</div>');
+    return;
+  }
+
+  // Get current filter values if they exist
+  var fCliente = document.getElementById('rm-cliente')?document.getElementById('rm-cliente').value:'';
+  var fTipo = document.getElementById('rm-tipo')?document.getElementById('rm-tipo').value:'';
+  var fDesde = document.getElementById('rm-desde')?document.getElementById('rm-desde').value:'';
+  var fHasta = document.getElementById('rm-hasta')?document.getElementById('rm-hasta').value:'';
+  var fOrden = document.getElementById('rm-orden')?document.getElementById('rm-orden').value:'fecha-desc';
+
+  var lista = todos.filter(function(m){
+    return (!fCliente||m.cliente.toLowerCase().includes(fCliente.toLowerCase())) &&
+           (!fTipo||m.tipo===fTipo) &&
+           (!fDesde||m.fecha>=fDesde) &&
+           (!fHasta||m.fecha<=fHasta);
+  });
+
+  // Sort
+  lista.sort(function(a,b){
+    if(fOrden==='fecha-desc') return a.fecha>b.fecha?-1:1;
+    if(fOrden==='fecha-asc') return a.fecha>b.fecha?1:-1;
+    if(fOrden==='cliente') return a.cliente.localeCompare(b.cliente);
+    if(fOrden==='tipo') return a.tipo.localeCompare(b.tipo);
+    return 0;
+  });
+
+  var totalCosto = lista.reduce(function(a,m){return a+m.costo;},0);
+  var enGarantia = lista.filter(function(m){return m.garantia==='Sí';}).length;
+
+  // Stats
+  var h = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
+    '<div class="stat"><div class="stat-n">'+lista.length+'</div><div class="stat-l">Visitas en período</div></div>'+
+    '<div class="stat"><div class="stat-n green">'+enGarantia+'</div><div class="stat-l">En garantía</div></div>'+
+    '<div class="stat"><div class="stat-n blue">$'+Math.round(totalCosto).toLocaleString('es-AR')+'</div><div class="stat-l">Costo total</div></div>'+
+  '</div>';
+
+  // Filters
+  var clientes = [...new Set(todos.map(function(m){return m.cliente;}))].sort();
+  var tipos = [...new Set(todos.map(function(m){return m.tipo;}))].sort();
+
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Cliente</label>'+
+      '<input id="rm-cliente" value="'+fCliente+'" placeholder="Filtrar por cliente..." oninput="reporteMantenimientos()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Tipo</label>'+
+      '<select id="rm-tipo" onchange="reporteMantenimientos()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
+        '<option value="">Todos</option>'+tipos.map(function(t){return '<option'+(t===fTipo?' selected':'')+'>'+t+'</option>';}).join('')+
+      '</select></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Desde</label>'+
+      '<input id="rm-desde" type="date" value="'+fDesde+'" onchange="reporteMantenimientos()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Hasta</label>'+
+      '<input id="rm-hasta" type="date" value="'+fHasta+'" onchange="reporteMantenimientos()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Ordenar por</label>'+
+      '<select id="rm-orden" onchange="reporteMantenimientos()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
+        '<option value="fecha-desc"'+(fOrden==='fecha-desc'?' selected':'')+'>Fecha ↓</option>'+
+        '<option value="fecha-asc"'+(fOrden==='fecha-asc'?' selected':'')+'>Fecha ↑</option>'+
+        '<option value="cliente"'+(fOrden==='cliente'?' selected':'')+'>Cliente A-Z</option>'+
+        '<option value="tipo"'+(fOrden==='tipo'?' selected':'')+'>Tipo</option>'+
+      '</select></div>'+
+    '<button class="btn btn-sm" onclick="pdfReporteMantenimientos()">🖨️ PDF</button>'+
+  '</div>';
+
+  if(!lista.length){
+    h += '<div class="empty">Sin registros para los filtros aplicados.</div>';
+    reporteContainer('🔧 Historial de mantenimientos', h);
+    return;
+  }
+
+  h += '<table><thead><tr>'+
+    '<th>Fecha</th><th>Cliente</th><th>Modelo</th><th>Tipo</th>'+
+    '<th>Motivo</th><th>Solución</th><th>Garantía</th>'+
+    '<th style="text-align:right">Costo $</th><th>Técnico</th>'+
+  '</tr></thead><tbody>';
+
+  lista.forEach(function(m){
+    h += '<tr>'+
+      '<td style="font-size:11px">'+m.fecha+'</td>'+
+      '<td><strong>'+m.cliente+'</strong><br><span style="font-size:10px;color:var(--text2)">'+m.lote+(m.barrio?' · '+m.barrio:'')+'</span></td>'+
+      '<td>'+mPill(m.modelo)+'</td>'+
+      '<td><span class="pill p-b">'+m.tipo+'</span></td>'+
+      '<td style="font-size:11px">'+m.motivo+'</td>'+
+      '<td style="font-size:11px">'+m.solucion+'</td>'+
+      '<td style="text-align:center">'+(m.garantia==='Sí'?'<span style="color:var(--green);font-weight:700">✔</span>':'—')+'</td>'+
+      '<td style="text-align:right;font-weight:700">$'+Math.round(m.costo).toLocaleString('es-AR')+'</td>'+
+      '<td style="font-size:11px">'+m.tecnico+'</td>'+
+    '</tr>';
+  });
+
+  h += '</tbody></table>';
+  reporteContainer('🔧 Historial de mantenimientos', h);
+}
+
+function pdfReporteMantenimientos(){
+  var empresa=(DB.config&&DB.config.empresa)||'Viking Security Systems';
+  var todos=[];
+  DB.clientes.forEach(function(c){
+    if(!c.mant||!c.mant.length) return;
+    c.mant.forEach(function(m){
+      todos.push({cliente:c.nombre,lote:c.lote||'',modelo:c.modelo||'',
+        fecha:m.fecha||'',tipo:m.tipo||'',motivo:m.motivo||'',
+        solucion:m.solucion||'',garantia:m.garantia||'No',
+        costo:parseFloat(m.costo)||0,tecnico:m.tecnico||''});
+    });
+  });
+  todos.sort(function(a,b){return a.fecha>b.fecha?-1:1;});
+  var total=todos.reduce(function(a,m){return a+m.costo;},0);
+  var rows=todos.map(function(m){
+    return '<tr><td>'+m.fecha+'</td><td>'+m.cliente+'</td><td>'+m.modelo+'</td>'+
+      '<td>'+m.tipo+'</td><td>'+m.motivo+'</td><td>'+m.solucion+'</td>'+
+      '<td style="text-align:center">'+(m.garantia==='Sí'?'✔':'—')+'</td>'+
+      '<td style="text-align:right">$'+Math.round(m.costo).toLocaleString('es-AR')+'</td>'+
+      '<td>'+m.tecnico+'</td></tr>';
+  }).join('');
+  var css='*{box-sizing:border-box;margin:0;padding:0}body{font-family:Segoe UI,Arial,sans-serif;padding:20px;font-size:11px}'+
+    'h1{font-size:15px;color:#B71C1C;margin-bottom:2px}.meta{color:#666;font-size:10px;margin-bottom:12px}'+
+    'table{width:100%;border-collapse:collapse}th{background:#B71C1C;color:#fff;padding:6px 8px;font-size:10px;text-align:left}'+
+    'td{padding:5px 8px;border-bottom:1px solid #eee}tfoot td{background:#222;color:#fff;font-weight:700}'+
+    '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer}'+
+    '@media print{.btn{display:none}}';
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Mantenimientos</title><style>'+css+'</style></head><body>'+
+    '<button class="btn" onclick="window.print()">🖨️ Imprimir</button>'+
+    '<h1>HISTORIAL DE MANTENIMIENTOS</h1><div class="meta">'+empresa+' · '+today()+'</div>'+
+    '<table><thead><tr><th>Fecha</th><th>Cliente</th><th>Modelo</th><th>Tipo</th><th>Motivo</th><th>Solución</th><th>Gtía</th><th>Costo</th><th>Técnico</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '<tfoot><tr><td colspan="7" style="padding:7px 8px;text-align:right">TOTAL</td>'+
+    '<td style="padding:7px 8px;text-align:right">$'+Math.round(total).toLocaleString('es-AR')+'</td><td></td></tr></tfoot>'+
+    '</table></body></html>');
+  w.document.close();
+}
+
 function reportePendientes(){
   const hace7=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
   const pendientes=DB.presupuestos.filter(function(p){
