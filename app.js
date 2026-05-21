@@ -2132,10 +2132,6 @@ function cerrarReporte(){
   if(el) el.innerHTML='';
 }
 
-function renderReportes(){
-  // Just show the buttons - already in HTML
-}
-
 function reporteContainer(titulo, html){
   document.getElementById('reporte-resultado').innerHTML =
     '<div class="card" style="margin-top:10px">'+
