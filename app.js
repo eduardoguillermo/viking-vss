@@ -2423,13 +2423,15 @@ function reporteMantenimientos(){
   var fHasta = document.getElementById('rm-hasta')?document.getElementById('rm-hasta').value:'';
   var fOrden = document.getElementById('rm-orden')?document.getElementById('rm-orden').value:'fecha-desc';
   var fMotivo = document.getElementById('rm-motivo')?document.getElementById('rm-motivo').value:'';
-  var fSolucion = document.getElementById('rm-solucion')?document.getElementById('rm-solucion').value:'';
+  var fFalla = document.getElementById('rm-falla')?document.getElementById('rm-falla').value:'';
+  var fReparacion = document.getElementById('rm-reparacion')?document.getElementById('rm-reparacion').value:'';
 
   var lista = todos.filter(function(m){
     return (!fCliente||m.cliente.toLowerCase().includes(fCliente.toLowerCase())) &&
            (!fTipo||m.tipo===fTipo) &&
            (!fMotivo||m.motivo.toLowerCase().includes(fMotivo.toLowerCase())) &&
-           (!fSolucion||m.solucion.toLowerCase().includes(fSolucion.toLowerCase())) &&
+           (!fFalla||m.falla.toLowerCase().includes(fFalla.toLowerCase())) &&
+           (!fReparacion||m.solucion.toLowerCase().includes(fReparacion.toLowerCase())) &&
            (!fDesde||m.fecha>=fDesde) &&
            (!fHasta||m.fecha<=fHasta);
   });
@@ -2468,8 +2470,11 @@ function reporteMantenimientos(){
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Motivo</label>'+
       '<input id="rm-motivo" value="'+fMotivo+'" placeholder="Filtrar motivo..." oninput="reporteMantenimientos()" '+
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
-    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Solución</label>'+
-      '<input id="rm-solucion" value="'+fSolucion+'" placeholder="Filtrar solución..." oninput="reporteMantenimientos()" '+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Falla</label>'+
+      '<input id="rm-falla" value="'+fFalla+'" placeholder="Filtrar falla..." oninput="reporteMantenimientos()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Reparación</label>'+
+      '<input id="rm-reparacion" value="'+fReparacion+'" placeholder="Filtrar reparación..." oninput="reporteMantenimientos()" '+
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Desde</label>'+
       '<input id="rm-desde" type="date" value="'+fDesde+'" onchange="reporteMantenimientos()" '+
