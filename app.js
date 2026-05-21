@@ -50,6 +50,10 @@ if(!DB.movimientos) DB.movimientos = [];
 if(!DB.ordenes) DB.ordenes = [];
 if(!DB.proveedores) DB.proveedores = [];
 if(!DB.gestiones) DB.gestiones = [];
+// Migrate ordenes - add numero if missing
+DB.ordenes.forEach(function(o,i){
+  if(!o.numero) o.numero = 'OC-'+( o.fecha?o.fecha.slice(0,4):new Date().getFullYear())+'-'+String(i+1).padStart(4,'0');
+});
 if(!DB.fondos) DB.fondos = [];
 DB.clientes.forEach(function(c){
   if(!c.barrio) c.barrio='';
@@ -1287,7 +1291,7 @@ function fillProvFilter(){
   var sel = document.getElementById('cat-prov-filter');
   if(!sel) return;
   var cur = sel.value;
-  var provs = [...new Set(DB.componentes.map(function(c){return c.proveedor||'';}).filter(Boolean))].sort();
+  var provs = [...new Set(DB.componentes.map(function(c){return (c.proveedor||'').trim();}).filter(Boolean))].sort();
   sel.innerHTML = '<option value="">Todos los proveedores</option>'+
     provs.map(function(p){return '<option value="'+p+'"'+(p===cur?' selected':'')+'>'+p+'</option>';}).join('');
 }
@@ -1301,7 +1305,7 @@ function renderCatalogo(){
   var list=DB.componentes.filter(function(c){
     return(!q||(c.codigo+c.desc+(c.proveedor||'')+(c.ubicacion||'')+( c.categoria||'')).toLowerCase().includes(q))
       &&(!fc||c.categoria===fc)
-      &&(!fprov||(c.proveedor||'')===fprov);
+      &&(!fprov||(c.proveedor||'').trim()===fprov);
   });
 
   // Sort
@@ -2771,20 +2775,22 @@ function renderReportes(){
   h += '</div>';
 
   // Clientes por modelo
-  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
-  h += '<div class="card"><div class="ch"><div class="ct">👥 Clientes activos por modelo</div></div><div class="card-body">';
-  h += '<table style="width:100%;border-collapse:collapse">';
+  h += '<div class="card" style="margin-bottom:12px"><div class="ch"><div class="ct">👥 Clientes activos por modelo</div></div><div class="card-body">';
   modelos.forEach(function(m){
     var clientesMod = DB.clientes.filter(function(c){return c.estado==='Activo'&&c.modelo===m;});
-    h += '<tr style="background:var(--surface2)"><td colspan="2" style="padding:6px 10px">'+mPill(m)+'<strong style="margin-left:8px">'+clientesMod.length+' cliente'+(clientesMod.length!==1?'s':'')+'</strong></td></tr>';
+    if(!clientesMod.length) return;
+    h += '<div style="margin-bottom:10px">';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+mPill(m)+'<strong>'+clientesMod.length+' cliente'+(clientesMod.length!==1?'s':'')+'</strong></div>';
+    h += '<table style="width:100%;border-collapse:collapse">';
     clientesMod.forEach(function(c){
       h += '<tr style="border-bottom:1px solid var(--border)">'+
-        '<td style="padding:4px 10px 4px 20px;font-size:11px">'+c.nombre+'</td>'+
+        '<td style="padding:4px 10px;font-size:11px">'+c.nombre+'</td>'+
         '<td style="padding:4px 10px;font-size:11px;color:var(--text2)">'+( c.lote||'')+(c.barrio?' · '+c.barrio:'')+'</td>'+
       '</tr>';
     });
+    h += '</table></div>';
   });
-  h += '</table></div></div>';
+  h += '</div>';
 
   // Presupuestos
   h += '<div class="card"><div class="ch"><div class="ct">📄 Presupuestos</div></div><div class="card-body">';
