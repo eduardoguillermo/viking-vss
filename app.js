@@ -2461,20 +2461,20 @@ function reporteMantenimientos(){
 
   h += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Cliente</label>'+
-      '<input id="rm-cliente" value="'+fCliente+'" placeholder="Filtrar por cliente..." oninput="reporteMantenimientos()" '+
+      '<input id="rm-cliente" value="'+fCliente+'" placeholder="Filtrar por cliente..." onchange="reporteMantenimientos()" '+
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Tipo</label>'+
       '<select id="rm-tipo" onchange="reporteMantenimientos()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
         '<option value="">Todos</option>'+tipos.map(function(t){return '<option'+(t===fTipo?' selected':'')+'>'+t+'</option>';}).join('')+
       '</select></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Motivo</label>'+
-      '<input id="rm-motivo" value="'+fMotivo+'" placeholder="Filtrar motivo..." oninput="reporteMantenimientos()" '+
+      '<input id="rm-motivo" value="'+fMotivo+'" placeholder="Filtrar motivo..." onchange="reporteMantenimientos()" '+
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Falla</label>'+
-      '<input id="rm-falla" value="'+fFalla+'" placeholder="Filtrar falla..." oninput="reporteMantenimientos()" '+
+      '<input id="rm-falla" value="'+fFalla+'" placeholder="Filtrar falla..." onchange="reporteMantenimientos()" '+
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Reparación</label>'+
-      '<input id="rm-reparacion" value="'+fReparacion+'" placeholder="Filtrar reparación..." oninput="reporteMantenimientos()" '+
+      '<input id="rm-reparacion" value="'+fReparacion+'" placeholder="Filtrar reparación..." onchange="reporteMantenimientos()" '+
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Desde</label>'+
       '<input id="rm-desde" type="date" value="'+fDesde+'" onchange="reporteMantenimientos()" '+
