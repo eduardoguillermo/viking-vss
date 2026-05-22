@@ -1553,7 +1553,7 @@ function renderMovimientos(){
   if(!list.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin movimientos registrados.</td></tr>';return;}
   const tc=(DB.config&&DB.config.tipoCambio)||1;
   tb.innerHTML=list.map(function(m){
-    const comp=DB.componentes.find(function(c){return c.id===m.cid;})||{desc:'—',codigo:'—',unidad:''};
+    const comp=DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{desc:'—',codigo:'—',unidad:''};
     const cli=m.clienteId?DB.clientes.find(function(c){return c.id===m.clienteId;}):null;
     const precioUSD=m.precio&&tc>0?'U$S '+(parseFloat(m.precio)/tc).toFixed(2):'—';
     return '<tr>'+
