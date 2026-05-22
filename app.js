@@ -268,7 +268,30 @@ function guardarCliente(){
   const l=document.getElementById('al').value.trim();
   const t=document.getElementById('at').value.trim();
   if(!n||!l||!t){alert('Nombre, lote y teléfono son obligatorios.');return;}
-  DB.clientes.unshift({
+  // Import sensors from relevamiento if converting from presupuesto
+  var sensoresImport = window._convSensores||[];
+  var presIdLink = window._convPresId||null;
+  var dirLink = window._convDir||'';
+  
+  // Build zigbee array from sensores
+  var zigbeeFromRel = [];
+  if(sensoresImport && sensoresImport.length){
+    sensoresImport.forEach(function(s){
+      zigbeeFromRel.push({
+        tipo: s.tipo||'',
+        nombre: s.nombre||s.tipo||'',
+        marca: s.marca||'',
+        modelo: s.modelo||'',
+        ubicacion: s.ubicacion||s.nombre||'',
+        dir: '',
+        pilas_marca: '',
+        pilas_modelo: '',
+        pilas_fecha: ''
+      });
+    });
+  }
+
+  var nuevoCliente = {
     id:DB.nid++,nombre:n,lote:l,barrio:document.getElementById('aba').value,tel:t,
     modelo:document.getElementById('am').value,
     version:document.getElementById('av').value,
@@ -278,11 +301,27 @@ function guardarCliente(){
     chatid:document.getElementById('achat').value,
     email:document.getElementById('aemail')?document.getElementById('aemail').value:'',
     ambientes:document.getElementById('aambientes')?document.getElementById('aambientes').value:'',
+    dir:dirLink,
     estado:'Activo',
+    estadoInstalacion:'Programado',
+    presId:presIdLink,
     equipo:{esp_serie:'',proveedor:'',fcompra:'',bat_marca:'',bat_modelo:'',carg_marca:'',carg_modelo:'',fuente_marca:'',fuente_modelo:'',fuente_tension:'',sirena_marca:'',sirena_modelo:'',sirena_serie:'',sirena_corte:'No',garantia:'No',gar_vence:'',ultimo_service:''},
-    zigbee:[],ota:[],mant:[]
-  });
+    zigbee:zigbeeFromRel,ota:[],mant:[]
+  };
+  DB.clientes.unshift(nuevoCliente);
+
+  // Link presupuesto to cliente
+  if(presIdLink){
+    var pres = DB.presupuestos.find(function(p){return p.id===presIdLink;});
+    if(pres){ pres.estado='Aprobado'; pres.clienteId=nuevoCliente.id; }
+  }
+
+  window._convSensores = null;
+  window._convPresId = null;
+  window._convDir = null;
+
   save(); limpiarAlta(); goTo('clientes');
+}
 
 // Backup reminder on every load
 setTimeout(function(){
@@ -309,7 +348,6 @@ setTimeout(function(){
   banner.appendChild(span); banner.appendChild(btns);
   document.body.appendChild(banner);
 }, 1500);
-}
 
 // =======================================================
 // VER CLIENTE
@@ -983,8 +1021,13 @@ function convertirCliente(id){
     f('achat', '');
     var am=document.getElementById('am');
     if(am) am.value=d.modelo||'Base';
+    // Store sensors and presId for guardarCliente to use
+    window._convSensores = d.sensores||[];
+    window._convPresId = d.id;
+    window._convDir = d.dir||'';
+    f('aba', d.barrio||'');
     window._convData = null;
-    alert('Datos cargados desde presupuesto. Completá lote, MAC, PIN y versión.');
+    alert('Datos cargados desde presupuesto. Completá lote, MAC, PIN y versión. Los sensores del relevamiento se importarán automáticamente.');
   }, 300);
 }
 
@@ -4242,13 +4285,24 @@ function abrirOT(id){
         (e.ops.length?opsHTML:'<span style="color:var(--text2);font-size:11px">Sin operaciones definidas.</span>')+
         (esActual?
           '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'+
-            '<input id="fab-resp-'+e.id+'" placeholder="Responsable" value="'+(et.responsable||'')+'" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;flex:1;min-width:120px">'+
-            '<input id="fab-obs-'+e.id+'" placeholder="Observaciones de la etapa" value="'+(et.obs||'')+'" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;flex:2;min-width:180px">'+
+            '<input id="fab-resp-'+e.id+'" placeholder="Responsable" value="'+(et.responsable||'')+'" onblur="saveEtapaFields('+id+',\''+e.id+'\')" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;flex:1;min-width:120px">'+
+            '<input id="fab-obs-'+e.id+'" placeholder="Observaciones de la etapa" value="'+(et.obs||'')+'" onblur="saveEtapaFields('+id+',\''+e.id+'\')" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;flex:2;min-width:180px">'+
           '</div>':'')+
       '</div></div>';
   }).join(''):'';
 
   openModal('OT — '+f.nserie, headerHTML+iniciarHTML+matHTML+etapasHTML, null, true);
+}
+
+
+function saveEtapaFields(otId, etapaId){
+  var f=DB.fabricacion.find(function(x){return x.id===otId;});
+  if(!f||!f.etapas[etapaId]) return;
+  var respEl=document.getElementById('fab-resp-'+etapaId);
+  var obsEl=document.getElementById('fab-obs-'+etapaId);
+  if(respEl) f.etapas[etapaId].responsable=respEl.value;
+  if(obsEl) f.etapas[etapaId].obs=obsEl.value;
+  save();
 }
 
 function toggleOpFab(otId, etapaId, op){
@@ -4275,7 +4329,7 @@ function completarEtapaFab(otId, etapaId){
     f.etapaActual=ETAPAS_FAB[etapaIdx+1].id;
   } else {
     f.estado='Terminado';
-    f.etapaActual='entrega';
+    f.etapaActual='egreso';
     if(f.clienteId){
       var clienteObj=DB.clientes.find(function(c){return c.id===f.clienteId;});
       if(clienteObj) clienteObj.estadoInstalacion='Terminado';
@@ -4285,7 +4339,16 @@ function completarEtapaFab(otId, etapaId){
     var piExist=DB.instalaciones.find(function(p){return p.otId===f.id;});
     if(!piExist){
       var piNuevo=crearPedidoInstalacion(f.id);
-      if(piNuevo) alert('✅ Fabricación terminada.\nPedido de instalación creado automáticamente: '+piNuevo.numero);
+      if(piNuevo){
+        // Warning about component return
+        var matPendiente=(f.materiales||[]).filter(function(m){return m.cant>(m.devuelto||0);});
+        var msg='\u2705 Fabricaci\u00f3n terminada.\\nPedido de instalaci\u00f3n: '+piNuevo.numero;
+        if(matPendiente.length){
+          msg+='\\n\\n\u26a0\ufe0f ATENCI\u00d3N: Hay '+matPendiente.length+' componente'+(matPendiente.length!==1?'s':'')+' en f\u00e1brica pendientes de devoluci\u00f3n al stock:\\n';
+          matPendiente.forEach(function(m){msg+='\u2022 '+m.compNombre+': '+(m.cant-(m.devuelto||0))+' unidades\\n';});
+        }
+        alert(msg);
+      }
     }
   }
 
@@ -4653,7 +4716,25 @@ function cambiarEstadoPI(id){
     var c=DB.clientes.find(function(x){return x.id===p.clienteId;});
     if(c){
       if(nuevo==='En curso') c.estadoInstalacion='En curso';
-      if(nuevo==='Completado') c.estadoInstalacion='Completada';
+      if(nuevo==='Completado'){
+        c.estadoInstalacion='Completada';
+        // Auto-import: add OTA entry and tecnico note
+        var piObj=DB.instalaciones.find(function(x){return x.id===id;});
+        if(piObj){
+          if(!c.ota) c.ota=[];
+          c.ota.push({fecha:today(),version:c.version||'—',tipo:'Instalación inicial',tecnico:piObj.tecnico||'',obs:'Instalación completada. Pedido '+piObj.numero});
+          if(piObj.tecnico&&!c.notas) c.notas='Técnico instalador: '+piObj.tecnico;
+        }
+        // Warning about materials to return
+        if(piObj){
+          var matPend=(piObj.kit||[]).filter(function(m){return m.compId&&m.cant>(m.devuelto||0);});
+          if(matPend.length){
+            var warnMsg='\u26a0\ufe0f Materiales pendientes de devoluci\u00f3n al stock:\n';
+            matPend.forEach(function(m){warnMsg+='\u2022 '+m.compNombre+': '+(m.cant-(m.devuelto||0))+' unidades\n';});
+            alert(warnMsg);
+          }
+        }
+      }
       if(nuevo==='Pendiente') c.estadoInstalacion='Pendiente';
     }
   }
