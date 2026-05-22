@@ -217,7 +217,7 @@ function borrarCliente(id){
   if(!confirm('Última confirmación. ¿Eliminar "'+c.nombre+'"?')) return;
   DB.clientes=DB.clientes.filter(function(x){return x.id!==id;});
   save(); renderStats(); renderClientes(); goTo('clientes');
-initNavCollapse();
+setTimeout(initNavCollapse, 50);
 
 // Backup reminder on every load
 setTimeout(function(){
