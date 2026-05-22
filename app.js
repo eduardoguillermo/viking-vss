@@ -3818,6 +3818,16 @@ function renderActa(){
       'Su firma da inicio al período de garantía.'+
     '</div>'+
     '<hr class="div">'+
+    '<div class="sectitle" style="margin-bottom:10px">Garantía</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'+
+      '<div class="fg" style="margin:0"><label>Duración de garantía</label>'+
+        '<input id="acta-garantia" value="'+(c.actaGarantia||'12 meses')+'" placeholder="Ej: 12 meses, 6 meses..." '+
+        'onblur="saveActaDatos('+c.id+')"></div>'+
+      '<div class="fg" style="margin:0"><label>Alcance</label>'+
+        '<input id="acta-garantia-alcance" value="'+(c.actaGarantiaAlcance||'Materiales y mano de obra')+'" placeholder="Ej: Materiales y mano de obra" '+
+        'onblur="saveActaDatos('+c.id+')"></div>'+
+    '</div>'+
+    '<hr class="div">'+
     '<div class="sectitle" style="margin-bottom:10px">Archivo del acta firmada</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
       '<div class="fg" style="margin:0"><label>N° de archivo físico</label>'+
@@ -3856,7 +3866,9 @@ function generarPDFActa(cid){
   const web = (DB.config&&DB.config.web)||'';
   const numActa = 'ACR-'+new Date().getFullYear()+'-'+String(c.id).padStart(4,'0');
   const fecha = today();
-  const garantia = (c.equipo&&c.equipo.garantia==='Sí')?'12 meses sobre materiales y mano de obra':'Consultar condiciones';
+  var garantiaDur = c.actaGarantia||'12 meses';
+  var garantiaAlc = c.actaGarantiaAlcance||'materiales y mano de obra';
+  var garantia = garantiaDur+' — '+garantiaAlc;
 
   // Dispositivos Zigbee
   var zigbeeRows = '';
