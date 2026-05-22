@@ -267,27 +267,41 @@ function guardarCliente(){
   const n=document.getElementById('an').value.trim();
   const l=document.getElementById('al').value.trim();
   const t=document.getElementById('at').value.trim();
-  if(!n||!l||!t){alert('Nombre, lote y teléfono son obligatorios.');return;}
+  if(!n||!t){alert('Nombre y teléfono son obligatorios.');return;}
+  // Check for duplicate client
+  var duplicado = DB.clientes.find(function(c){
+    return c.nombre.toLowerCase()===n.toLowerCase() ||
+           (t && c.tel && c.tel.replace(/\s/g,'')===t.replace(/\s/g,''));
+  });
+  if(duplicado){
+    if(!confirm('\u26a0\ufe0f Ya existe un cliente con ese nombre o tel\u00e9fono: "'+duplicado.nombre+'" ('+duplicado.lote+').\n\n\u00bfContinuar de todas formas?')) return;
+  }
   // Import sensors from relevamiento if converting from presupuesto
   var sensoresImport = window._convSensores||[];
   var presIdLink = window._convPresId||null;
   var dirLink = window._convDir||'';
   
-  // Build zigbee array from sensores
+  // Build zigbee array from sensores {tipo: {qty, ubicaciones:[]}}
   var zigbeeFromRel = [];
-  if(sensoresImport && sensoresImport.length){
-    sensoresImport.forEach(function(s){
-      zigbeeFromRel.push({
-        tipo: s.tipo||'',
-        nombre: s.nombre||s.tipo||'',
-        marca: s.marca||'',
-        modelo: s.modelo||'',
-        ubicacion: s.ubicacion||s.nombre||'',
-        dir: '',
-        pilas_marca: '',
-        pilas_modelo: '',
-        pilas_fecha: ''
-      });
+  if(sensoresImport && typeof sensoresImport === 'object' && !Array.isArray(sensoresImport)){
+    Object.entries(sensoresImport).forEach(function(entry){
+      var tipo = entry[0];
+      var data = entry[1];
+      if(!data || !data.qty || data.qty <= 0) return;
+      var ubicaciones = data.ubicaciones || [];
+      for(var i=0; i<data.qty; i++){
+        zigbeeFromRel.push({
+          tipo: tipo,
+          nombre: ubicaciones[i] || tipo + ' ' + (i+1),
+          marca: '',
+          modelo: '',
+          ubicacion: ubicaciones[i] || '',
+          dir: '',
+          pilas_marca: '',
+          pilas_modelo: '',
+          pilas_fecha: ''
+        });
+      }
     });
   }
 
@@ -320,7 +334,40 @@ function guardarCliente(){
   window._convPresId = null;
   window._convDir = null;
 
-  save(); limpiarAlta(); goTo('clientes');
+  save();
+
+  // Auto-create OT if coming from presupuesto
+  if(presIdLink && nuevoCliente){
+    var loteMax=(DB.fabricacion||[]).reduce(function(a,f){return Math.max(a,f.lote||0);},0);
+    var loteNuevo = loteMax + 1;
+    var nserie = getNumSerie(nuevoCliente.modelo, loteNuevo);
+    var ot = {
+      id:DB.nid++,
+      nserie:nserie,
+      modelo:nuevoCliente.modelo,
+      lote:loteNuevo,
+      cliente:nuevoCliente.nombre,
+      clienteId:nuevoCliente.id,
+      presId:presIdLink,
+      fecha:today(),
+      estado:'Pendiente',
+      etapaActual:'mecanizado',
+      obs:'Generada automáticamente desde presupuesto aprobado',
+      etapas:{},
+      materiales:[],
+      fechaInicio:''
+    };
+    ETAPAS_FAB.forEach(function(e){
+      ot.etapas[e.id]={completada:false,fecha:'',responsable:'',obs:'',ops:{}};
+      e.ops.forEach(function(op){ot.etapas[e.id].ops[op]=false;});
+    });
+    if(!DB.fabricacion) DB.fabricacion=[];
+    DB.fabricacion.push(ot);
+    save();
+    alert('Cliente creado correctamente.\nOrden de trabajo generada automáticamente: '+nserie);
+  }
+
+  limpiarAlta(); goTo('clientes');
 }
 
 // Backup reminder on every load
@@ -987,7 +1034,15 @@ function importarRelevamiento(input){
 
 function cambiarEstadoPres(id,estado){
   const p=DB.presupuestos.find(x=>x.id===id);
-  if(p){p.estado=estado;save();renderPresupuestos();}
+  if(p){
+    if(!p.historial) p.historial=[];
+    p.historial.push({fecha:today(),de:p.estado,a:estado});
+    p.estado=estado;
+    if(estado==='Enviado') p.fechaEnviado=today();
+    if(estado==='Aprobado') p.fechaAprobado=today();
+    if(estado==='Rechazado') p.fechaRechazado=today();
+    save();renderPresupuestos();
+  }
 }
 
 function eliminarPres(id){
@@ -1009,11 +1064,11 @@ function convertirCliente(id){
     if(!d) return;
     var f=function(eid,val){var el=document.getElementById(eid);if(el)el.value=val||'';};
     f('an', d.nombre);
-    f('al', '');
-    f('aba', d.barrio);
+    f('al', d.lote||'');
+    f('aba', d.barrio||'');
     f('at', d.tel);
-    f('aemail', d.email);
-    f('aambientes', d.ambientes);
+    f('aemail', d.email||'');
+    f('aambientes', d.ambientes||'');
     f('af', today());
     f('av', '');
     f('amac', '');
@@ -1022,10 +1077,9 @@ function convertirCliente(id){
     var am=document.getElementById('am');
     if(am) am.value=d.modelo||'Base';
     // Store sensors and presId for guardarCliente to use
-    window._convSensores = d.sensores||[];
+    window._convSensores = d.sensores||{};
     window._convPresId = d.id;
     window._convDir = d.dir||'';
-    f('aba', d.barrio||'');
     window._convData = null;
     alert('Datos cargados desde presupuesto. Completá lote, MAC, PIN y versión. Los sensores del relevamiento se importarán automáticamente.');
   }, 300);
@@ -4048,7 +4102,7 @@ function renderFabricacion(){
       '</td>'+
       '<td><span class="pill '+estadoColor+'">'+f.estado+'</span></td>'+
       '<td style="font-size:11px">'+(f.fecha||'—')+'</td>'+
-      '<td><button class="btn btn-sm btn-p" onclick="abrirOT('+f.id+')">📋 Ver</button></td>'+
+      '<td style="display:flex;gap:3px"><button class="btn btn-sm btn-p" onclick="abrirOT('+f.id+')">📋 Ver</button><button class="btn btn-sm" style="color:var(--red)" onclick="borrarOT('+f.id+')">🗑️</button></td>'+
     '</tr>';
   }).join('');
 }
@@ -4428,6 +4482,35 @@ function devolverMaterial(otId){
       save(); cerrarModal(); abrirOT(otId); return true;
     }
   );
+}
+
+
+function borrarOT(id){
+  var f=DB.fabricacion.find(function(x){return x.id===id;});
+  if(!f) return;
+  if(f.estado==='En fabricación'){
+    if(!confirm('Esta OT está en fabricación. ¿Confirmar eliminación de todas formas?')) return;
+  }
+  if(!confirm('¿Eliminar la OT '+f.nserie+'? Esta acción no se puede deshacer.')) return;
+  // Return materials to stock if any
+  if(f.materiales&&f.materiales.length){
+    var pendientes=f.materiales.filter(function(m){return m.cant>(m.devuelto||0);});
+    if(pendientes.length){
+      if(confirm('Hay materiales en fábrica. ¿Devolver al stock antes de eliminar?')){
+        pendientes.forEach(function(m){
+          DB.movimientos.push({
+            id:DB.nid++,compId:m.compId,fecha:today(),
+            tipo:'Entrada',motivo:'Devolución por cancelación OT '+f.nserie,
+            ref:f.nserie,cant:m.cant-(m.devuelto||0),precio:0
+          });
+        });
+      }
+    }
+  }
+  DB.fabricacion=DB.fabricacion.filter(function(x){return x.id!==id;});
+  // Remove linked PI if exists
+  DB.instalaciones=(DB.instalaciones||[]).filter(function(p){return p.otId!==id;});
+  save(); renderFabricacion();
 }
 
 // KIT DE FABRICACION =====================================
@@ -5271,6 +5354,10 @@ function trackEstadoPres(id, nuevoEstado){
   var prev = p.estado;
   if(!p.historial) p.historial = [];
   p.historial.push({fecha:today(), de:prev, a:nuevoEstado});
+  // Store specific state dates
+  if(nuevoEstado==='Enviado') p.fechaEnviado = today();
+  if(nuevoEstado==='Aprobado') p.fechaAprobado = today();
+  if(nuevoEstado==='Rechazado') p.fechaRechazado = today();
   updPres(id, 'estado', nuevoEstado);
 }
 
