@@ -54,6 +54,7 @@ function toggleNav(el){
   <div class="nav-section-items">
   <div class="ni" id="nav-presupuestos" onclick="goTo('presupuestos')"><span class="ni-icon">📄</span>Presupuestos</div>
   <div class="ni" id="nav-gestion" onclick="goTo('gestion')"><span class="ni-icon">💰</span>Gestión económica</div>
+  <div class="ni" id="nav-actas" onclick="goTo('actas')"><span class="ni-icon">📋</span>Actas de conformidad</div>
 
   </div>
   <div class="ns collapsible" onclick="toggleNav(this)">👥 Clientes ▸</div>
@@ -344,6 +345,25 @@ function toggleNav(el){
               <th>Unidad</th><th style="text-align:center">Stock</th><th>Acciones</th>
             </tr></thead>
             <tbody id="tbody-kitinst"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTAS -->
+    <div class="panel" id="panel-actas">
+      <div class="sbar">
+        <input type="text" id="q-actas" placeholder="🔍 Buscar cliente..." oninput="renderActas()">
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">📋 Actas de conformidad</div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr>
+              <th>N° Acta</th><th>Cliente</th><th>Modelo</th><th>Fecha inst.</th>
+              <th>Fecha firma</th><th>Estado</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="tbody-actas"></tbody>
           </table>
         </div>
       </div>

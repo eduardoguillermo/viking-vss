@@ -87,7 +87,7 @@ function save(){ localStorage.setItem(SKEY,JSON.stringify(DB)); }
 // NAV
 // =======================================================
 let curCid=null, curSub='datos';
-const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos','fabricacion','kit','instalaciones','kitinst'];
+const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos','fabricacion','kit','instalaciones','kitinst','actas'];
 
 function goTo(p){
   PANELS.forEach(x=>{
@@ -112,6 +112,7 @@ function goTo(p){
   if(p==='kit') renderKit();
   if(p==='instalaciones') renderInstalaciones();
   if(p==='kitinst') renderKitInst();
+  if(p==='actas') renderActas();
   if(p==='presupuestos') renderPresupuestos();
   if(p==='stock') renderStock();
   if(p==='catalogo') renderCatalogo();
@@ -982,7 +983,8 @@ function renderPresupuestos(){
     return;
   }
   tb.innerHTML=list.map(p=>{
-    const aprBtn=p.estado==='Aprobado'?'<button class="btn btn-sm btn-g" onclick="convertirCliente('+p.id+')">👤 Cliente</button>':'';
+    var clienteYaCreado=p.clienteId&&DB.clientes.find(function(c){return c.id===p.clienteId;});
+const aprBtn=p.estado==='Aprobado'&&!clienteYaCreado?'<button class="btn btn-sm btn-g" onclick="convertirCliente('+p.id+')">👤 Cliente</button>':(p.estado==='Aprobado'&&clienteYaCreado?'<span style="font-size:11px;color:var(--green)">✔ '+clienteYaCreado.nombre+'</span>' : '');
     return '<tr>'+
       '<td><strong>'+p.nombre+'</strong></td>'+
       '<td>'+p.dir+(p.barrio?' · '+p.barrio:'')+'</td>'+
@@ -1109,7 +1111,8 @@ function verPresupuesto(id){
     sensorHtml+='<div style="margin-bottom:8px"><strong>'+tipo+'</strong>: '+s.qty+' unidad'+(s.qty>1?'es':'')+'<ul style="padding-left:16px;color:var(--text2);font-size:11px">'+ubics+'</ul></div>';
   });
 
-  const aprBtn=p.estado==='Aprobado'?'<button class="btn btn-sm btn-g" onclick="convertirCliente('+p.id+');cerrarModal()">👤 Convertir en cliente</button>':'';
+  var cliExiste=p.clienteId&&DB.clientes.find(function(c){return c.id===p.clienteId;});
+const aprBtn=p.estado==='Aprobado'&&!cliExiste?'<button class="btn btn-sm btn-g" onclick="convertirCliente('+p.id+');cerrarModal()">👤 Convertir en cliente</button>':(p.estado==='Aprobado'&&cliExiste?'<span style="font-size:11px;color:var(--green)">✔ Cliente: '+cliExiste.nombre+'</span>':'');
 
   openModal('Presupuesto '+presNum(p),
     '<div style="display:flex;gap:8px;margin-bottom:12px">'+
@@ -4396,12 +4399,21 @@ function completarEtapaFab(otId, etapaId){
       if(piNuevo){
         // Warning about component return
         var matPendiente=(f.materiales||[]).filter(function(m){return m.cant>(m.devuelto||0);});
-        var msg='\u2705 Fabricaci\u00f3n terminada.\\nPedido de instalaci\u00f3n: '+piNuevo.numero;
         if(matPendiente.length){
-          msg+='\\n\\n\u26a0\ufe0f ATENCI\u00d3N: Hay '+matPendiente.length+' componente'+(matPendiente.length!==1?'s':'')+' en f\u00e1brica pendientes de devoluci\u00f3n al stock:\\n';
-          matPendiente.forEach(function(m){msg+='\u2022 '+m.compNombre+': '+(m.cant-(m.devuelto||0))+' unidades\\n';});
+          var msg='\u26a0\ufe0f Hay '+matPendiente.length+' componente'+(matPendiente.length!==1?'s':'')+' pendientes de devoluci\u00f3n al stock:\n';
+          matPendiente.forEach(function(m){msg+='\u2022 '+m.compNombre+': '+(m.cant-(m.devuelto||0))+'\n';});
+          msg+='\n\u00bfDevolver todos al stock ahora?';
+          if(confirm(msg)){
+            matPendiente.forEach(function(m){
+              DB.movimientos.push({id:DB.nid++,compId:m.compId,fecha:today(),tipo:'Entrada',motivo:'Devoluci\u00f3n fabricaci\u00f3n '+f.nserie,ref:f.nserie,cant:m.cant-(m.devuelto||0),precio:0});
+              m.devuelto=m.cant;
+            });
+            save();
+          }
+          alert('\u2705 Fabricaci\u00f3n terminada. Pedido: '+piNuevo.numero);
+        } else {
+          alert('\u2705 Fabricaci\u00f3n terminada. Pedido: '+piNuevo.numero);
         }
-        alert(msg);
       }
     }
   }
@@ -4812,9 +4824,16 @@ function cambiarEstadoPI(id){
         if(piObj){
           var matPend=(piObj.kit||[]).filter(function(m){return m.compId&&m.cant>(m.devuelto||0);});
           if(matPend.length){
-            var warnMsg='\u26a0\ufe0f Materiales pendientes de devoluci\u00f3n al stock:\n';
-            matPend.forEach(function(m){warnMsg+='\u2022 '+m.compNombre+': '+(m.cant-(m.devuelto||0))+' unidades\n';});
-            alert(warnMsg);
+            var warnMsg='\u26a0\ufe0f Hay '+matPend.length+' material'+(matPend.length!==1?'es':'')+' pendientes de devoluci\u00f3n al stock:\n';
+            matPend.forEach(function(m){warnMsg+='\u2022 '+m.compNombre+': '+(m.cant-(m.devuelto||0))+'\n';});
+            warnMsg+='\n\u00bfDevolver todos al stock ahora?';
+            if(confirm(warnMsg)){
+              matPend.forEach(function(m){
+                DB.movimientos.push({id:DB.nid++,compId:m.compId,fecha:today(),tipo:'Entrada',motivo:'Devoluci\u00f3n instalaci\u00f3n '+piObj.numero,ref:piObj.nserie,cant:m.cant-(m.devuelto||0),precio:0});
+                m.devuelto=m.cant;
+              });
+              save();
+            }
           }
         }
       }
@@ -5252,6 +5271,40 @@ function pdfChecklistQA(otId){
     '</div>'+
     '</body></html>');
   w.document.close();
+}
+
+
+
+function verClienteActa(id){
+  verCliente(id);
+  setTimeout(function(){ goSub('acta'); }, 300);
+}
+
+function renderActas(){
+  var q=(document.getElementById('q-actas')?document.getElementById('q-actas').value||'':'').toLowerCase();
+  var clientes=DB.clientes.filter(function(c){
+    return c.estado==='Activo' && (!q||(c.nombre+c.lote+(c.barrio||'')).toLowerCase().includes(q));
+  }).sort(function(a,b){return (a.nombre||'').localeCompare(b.nombre||'');});
+
+  var tb=document.getElementById('tbody-actas');
+  if(!clientes.length){tb.innerHTML='<tr><td colspan="7" class="empty">Sin clientes activos.</td></tr>';return;}
+
+  tb.innerHTML=clientes.map(function(c){
+    var numActa='ACR-'+new Date().getFullYear()+'-'+String(c.id).padStart(4,'0');
+    var firmada=c.actaFechaFirma?'<span class="pill p-g">Firmada</span>':'<span class="pill p-a">Pendiente</span>';
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:11px">'+numActa+'</td>'+
+      '<td><strong>'+c.nombre+'</strong><br><span style="font-size:10px;color:var(--text2)">'+(c.lote||'')+(c.barrio?' · '+c.barrio:'')+'</span></td>'+
+      '<td>'+mPill(c.modelo)+'</td>'+
+      '<td style="font-size:11px">'+(c.fecha||'—')+'</td>'+
+      '<td style="font-size:11px">'+(c.actaFechaFirma||'—')+'</td>'+
+      '<td>'+firmada+'</td>'+
+      '<td style="display:flex;gap:4px">'+
+        '<button class="btn btn-sm btn-p" onclick="generarPDFActa('+c.id+')">📄 PDF</button>'+
+        '<button class="btn btn-sm" onclick="verClienteActa('+c.id+')" title="Ver en ficha">Ver</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
 }
 
 // INIT
