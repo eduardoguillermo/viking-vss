@@ -16,6 +16,12 @@ function defData(){
     fondos:[],
     proveedores:[],
     gestiones:[],
+    fabricacion:[],
+    instalaciones:[],
+    kit:[],
+    kitinst:[],
+    kitVersion:1,
+    kitinstVersion:1,
     config:{
       empresa:'Viking Security Systems',
       email:'',
@@ -3912,35 +3918,35 @@ function reporteOCporProveedor(){
 // =======================================================
 
 var ETAPAS_FAB = [
-  { id:'mecanica', label:'Mecánica', ops:[
-    'Perforación de la caja',
-    'Alojamiento de partes pesadas'
+  { id:'mecanizado', label:'Fase 1 — Mecanizado', ops:[
+    'Apertura de unidad en sistema y generación del N° de serie',
+    'Estampado del N/S en el fondo interno de la caja',
+    'Perforación con fresa escalonada para prensaestopas',
+    'Atornillado del transformador en la base del gabinete'
   ]},
-  { id:'electrica', label:'Eléctrica', ops:[
-    'Ensayo en banco del sistema UPS',
-    'Verificación de voltajes y corrientes',
-    'Verificación de corte por baja tensión de batería'
+  { id:'montaje', label:'Fase 2 — Montaje electrónico', ops:[
+    'Soldadura de chicotes en salidas del transformador',
+    'Crimpado de terminales Faston en cables de batería',
+    'Montaje de placa ESP32-C6 sobre separadores',
+    'Ruteo de líneas 220V y cables de salida (sirena y 12V aux)',
+    'Verificación de margen técnico de 15cm'
   ]},
-  { id:'electronica', label:'Electrónica', ops:[
-    'Conexión módulo de sirena',
-    'Conexión módulo de falta de energía'
+  { id:'calibracion', label:'Fase 3 — Calibración y CC', ops:[
+    'Vinculación Zigbee — sensores asignados al cliente / sensores testigo',
+    'Verificación de enlace Zigbee estable',
+    'Protocolo QA Telegram — aprobado (ver checklist físico)'
   ]},
-  { id:'sistema', label:'Sistema', ops:[
-    'Configurar micro con datos de red WiFi del taller',
-    'Configurar Chat ID cliente',
-    'Configurar Chat ID guardia',
-    'Descargar sketch en el micro',
-    'Vincular sensores de prueba (Puerta, Botón, Agua, Router)'
+  { id:'embalaje', label:'Fase 4 — Embalaje', ops:[
+    'Introducir batería de gel en habitáculo (sin conectar terminales)',
+    'Proteger conectores Faston con capuchones o cinta',
+    'Colocar kit de repuesto (fusibles) en bolsa accesoria',
+    'Atornillar tapa frontal',
+    'Empacar en caja de cartón con modelo visible'
   ]},
-  { id:'pruebas', label:'Configuración y pruebas', ops:[
-    'Acceso a WiFi',
-    'Prueba aviso corte de energía vía Telegram (usuario y guardia)',
-    'Prueba sirena',
-    'Prueba comando /armar, /desarmar, pánico',
-    'Prueba sensores (disparo por apertura y botón)',
-    'Prueba características del modelo'
-  ]},
-  { id:'entrega', label:'Entrega', ops:[]}
+  { id:'egreso', label:'Fase 5 — Fabricación terminada', ops:[
+    'Confirmar N° de serie en el sistema',
+    'Vincular con ficha del cliente'
+  ]}
 ];
 
 var MODELO_LETRA = {Base:'B', Energy:'E', Comfort:'C', Black:'K'};
@@ -3953,7 +3959,7 @@ function getNumSerie(modelo, lote){
   var ll = String(lote).padStart(2,'0');
   var enLote = (DB.fabricacion||[]).filter(function(f){return f.lote===parseInt(lote);}).length;
   var nnn = String(enLote+1).padStart(3,'0');
-  return letra+'-'+aa+'-'+mm+'-'+ll+'-'+nnn;
+  return 'VSS-'+letra+aa+mm+'-'+ll+'-'+nnn;
 }
 
 function renderFabricacion(){
@@ -4052,7 +4058,7 @@ function modalNuevaOT(){
         presId:presId||null,
         fecha:today(),
         estado:'Pendiente',
-        etapaActual:'mecanica',
+        etapaActual:'mecanizado',
         obs:document.getElementById('ot-obs').value,
         etapas:{},
         materiales:[],
@@ -4226,7 +4232,10 @@ function abrirOT(id){
     return '<div class="card" style="margin-bottom:8px;border-left:3px solid '+borderColor+'">'+
       '<div class="ch">'+
         '<div class="ct" style="color:'+(completada?'var(--green)':esActual?'var(--primary)':'var(--text2)')+'">'+icon+' '+(ei+1)+'. '+e.label+'</div>'+
-        (esActual?'<button class="btn btn-sm btn-g" onclick="completarEtapaFab('+id+',\''+e.id+'\')">✔ Completar etapa</button>':'')+ 
+        (esActual?
+          '<button class="btn btn-sm btn-g" onclick="completarEtapaFab('+id+',\''+e.id+'\')">✔ Completar etapa</button>'+
+          (e.id==='calibracion'?'<button class="btn btn-sm" onclick="pdfChecklistQA('+id+')">🖨️ Checklist QA</button>':''):
+          '')+ 
         (completada?'<span style="font-size:11px;color:var(--green)">✅ '+et.fecha+(et.responsable?' · '+et.responsable:'')+'</span>':'')+
       '</div>'+
       '<div class="card-body">'+
@@ -4891,6 +4900,194 @@ function toggleNav(el){
 function initNavCollapse(){
   // All sections closed by default via CSS - nothing needed
   // Arrows already show ▸ in HTML
+}
+
+
+function pdfChecklistQA(otId){
+  var f = (DB.fabricacion||[]).find(function(x){return x.id===otId;});
+  if(!f) return;
+  var empresa = (DB.config&&DB.config.empresa)||'Viking Security Systems';
+  var modelo = f.modelo||'Base';
+  var modelos_all = ['Base','Energy','Comfort','Black'];
+  var es_energy_plus = ['Energy','Comfort','Black'].includes(modelo);
+  var es_comfort_plus = ['Comfort','Black'].includes(modelo);
+  var es_black = modelo==='Black';
+
+  var modelo_pill = {'Base':'🔵 BASE','Energy':'🟡 ENERGY','Comfort':'🟠 COMFORT','Black':'⚫ BLACK'};
+
+  var fases = [
+    {num:1, titulo:'Verificación de arranque', todos:true, items:[
+      'Conectar por USB, monitor serie 115200 bps',
+      '[BOOT] Z-PRO Security v10.01 iniciando...',
+      '[NVS] Usuarios: N cargados',
+      '[WIFI] Conectado — IP: 192.168.x.x',
+      '[SSL] Certificado DigiCert cargado',
+      '[NTP] Zona: UTC-3',
+      '[ZB] Coordinador Zigbee iniciado',
+      '[BOOT] Sistema listo.'
+    ]},
+    {num:2, titulo:'Comandos de lectura', todos:true, items:[
+      '/start — Menú con estado del sistema',
+      '/estado — Alarma desarmada, energía OK, rol Admin',
+      '/version — Muestra v10.01, lote y barrio',
+      '/ids — Lista dispositivos',
+      '/bypass_list — Sin sensores en bypass',
+      '/retardos — Muestra retardos configurados',
+      '/historial — Sin eventos (primera vez)',
+      '/zona — Muestra UTC-3 por defecto'
+    ]},
+    {num:3, titulo:'Gestión de usuarios y roles', todos:true, items:[
+      '/user_list — Solo Admin de fábrica',
+      '/user_add ID_TEST Tester usuario — Confirmación + bienvenida',
+      'Desde Tester: /estado — Responde correctamente',
+      'Desde Tester: /vincular — Sin autorización',
+      '/user_rol ID_TEST lectura — Confirmación de cambio',
+      'Desde Tester: /desarmar — Sin autorización',
+      '/user_del ID_TEST — Confirmación de eliminación',
+      'Desde Tester: /estado — Sin autorización'
+    ]},
+    {num:4, titulo:'Zona horaria y NTP', todos:true, items:[
+      '/zona -5 — Confirmación UTC-5',
+      '/historial — Eventos usan hora UTC-5',
+      '/zona -3 — Retorno a UTC-3'
+    ]},
+    {num:5, titulo:'Ciclo de armado y pánico', todos:true, items:[
+      '/armar — Notifica armado a todos',
+      '/estado — Muestra alarma ARMADA',
+      '/panico — Sirena ON + notif. propietario + notif. guardia barrio',
+      '/historial — Evento pánico con hora correcta',
+      '/desarmar — Sirena OFF + notifica a todos',
+      '/estado — Muestra alarma DESARMADA'
+    ]},
+    {num:6, titulo:'Retardo de egreso', todos:true, items:[
+      '/armar 15 — Responde: Tienes 15s para salir',
+      'Esperar 15s — Arma automático + notifica',
+      '/desarmar — Desarma normalmente',
+      '/armar 15 — Inicia retardo nuevamente',
+      '/desarmar antes de 15s — Retardo cancelado'
+    ]},
+    {num:7, titulo:'Sensores Zigbee', todos:true, items:[
+      '/vincular — Red Zigbee abierta 60s',
+      'Emparejar SNZB-04 (puerta) — Log confirma',
+      '/armar → Abrir sensor → Disparo + sirena ON',
+      '/desarmar — Sirena OFF',
+      '/bypass 0xADDR — Bypass activo',
+      '/armar → Abrir sensor → NO dispara (bypass)',
+      '/bypass_off 0xADDR — Sensor reincorporado',
+      'Emparejar SNZB-01P (pánico) — Log confirma',
+      '/armar → 1 click → Pánico + sirena + notif.',
+      '/desarmar — Sirena OFF',
+      '2 clicks SNZB-01P — Toggle armado/desarmado'
+    ]},
+    {num:8, titulo:'Retardo de entrada', todos:true, items:[
+      'Configurar retardoSeg = 15 en sensor puerta',
+      '/armar → Abrir sensor → Notifica: 15s para desarmar',
+      'Esperar sin desarmar → Disparo al vencer tiempo',
+      '/desarmar — Sirena OFF',
+      '/armar → Abrir sensor → /desarmar antes de 15s → NO dispara'
+    ]},
+    {num:9, titulo:'Historial y persistencia NVS', todos:true, items:[
+      '/historial — Todos los eventos con hora correcta',
+      'Presionar RESET en ESP32',
+      '/historial — Mismos eventos persisten tras reinicio',
+      '/estado — Zona horaria y usuarios siguen configurados'
+    ]},
+    {num:10, titulo:'Actualización OTA', todos:true, items:[
+      '/update PIN_MAL URL — Responde: PIN incorrecto',
+      '/update 1234 URL — Descarga + reinicio + /version confirma'
+    ]},
+    {num:11, titulo:'Monitor de energía y UPS', todos:false, modelos:'Energy / Comfort / Black', aplica:es_energy_plus, items:[
+      'Cortar 12V CC → Notif. corte al propietario, sistema activo con batería',
+      '/estado — Responde con batería',
+      'Reconectar 12V CC → Notif. recuperación',
+      '/historial — Corte y recuperación con hora'
+    ]},
+    {num:12, titulo:'Luces Zigbee — Domótica Nivel A', todos:false, modelos:'Comfort / Black', aplica:es_comfort_plus, items:[
+      '/luz_on — Todas las luces encienden',
+      '/luz_off — Todas apagan',
+      '/luz_on Entrada — Solo luz Entrada enciende',
+      '/luz_off Entrada — Solo Entrada apaga',
+      '/armar y /panico → Luces encienden automáticamente',
+      '/desarmar — Sirena OFF',
+      'Click largo SNZB-01P — Toggle luz más cercana'
+    ]},
+    {num:13, titulo:'Sensor de agua', todos:false, modelos:'Comfort / Black', aplica:es_comfort_plus, items:[
+      'Activar sensor agua → Notif. SOLO al propietario',
+      'Chat guardia — NO recibe notificación',
+      'Sirena — NO suena',
+      '/historial — Evento agua con hora'
+    ]},
+    {num:14, titulo:'Simulador de presencia — Domótica Nivel B', todos:false, modelos:'Solo Black', aplica:es_black, items:[
+      '/presencia_on — Confirmación activado',
+      '/estado — Muestra Presencia: Activa',
+      'Log serie — Aparece [PRESENCIA] Luz X ON/OFF',
+      '/presencia_off — Luces apagan + confirmación',
+      '/estado — Muestra Presencia: Inactiva'
+    ]}
+  ];
+
+  var css = '*{box-sizing:border-box;margin:0;padding:0}'+
+    'body{font-family:Segoe UI,Arial,sans-serif;padding:20px;font-size:11px;color:#222}'+
+    '.header{background:#111;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}'+
+    '.header h1{font-size:14px;font-weight:700}'+
+    '.header .sub{font-size:10px;color:#aaa}'+
+    '.datos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}'+
+    '.dato{background:#f8f8f8;border-radius:4px;padding:6px 10px}'+
+    '.dato .l{font-size:9px;color:#999;font-weight:700;text-transform:uppercase}'+
+    '.dato .v{font-size:12px;font-weight:600}'+
+    '.fase{margin-bottom:10px;border:1px solid #ddd;border-radius:4px;overflow:hidden}'+
+    '.fase-head{background:#B71C1C;color:#fff;padding:5px 10px;font-size:10px;font-weight:700;display:flex;justify-content:space-between}'+
+    '.fase-head.na{background:#999}'+
+    '.item{display:flex;align-items:flex-start;gap:8px;padding:4px 10px;border-bottom:1px solid #f0f0f0}'+
+    '.item:last-child{border-bottom:none}'+
+    '.cb{width:14px;height:14px;border:1.5px solid #999;border-radius:2px;flex-shrink:0;margin-top:1px}'+
+    '.result{margin-left:auto;font-size:9px;color:#999;white-space:nowrap}'+
+    '.footer{margin-top:16px;border-top:2px solid #B71C1C;padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:20px}'+
+    '.sign{border-top:1px solid #333;padding-top:4px;font-size:9px;color:#666}'+
+    '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:11px}'+
+    '@media print{.btn{display:none}@page{margin:10mm}}';
+
+  var fasesHTML = fases.map(function(fase){
+    var aplica = fase.todos || fase.aplica;
+    var headClass = aplica ? 'fase-head' : 'fase-head na';
+    var items = aplica ? fase.items.map(function(item){
+      return '<div class="item"><div class="cb"></div><div style="flex:1;font-size:10px">'+item+'</div><div class="result">PASS &nbsp; FAIL &nbsp; N/A</div></div>';
+    }).join('') : '<div class="item" style="color:#999;font-style:italic;padding:6px 10px">No aplica a este modelo</div>';
+    var modLabel = fase.todos ? 'Todos los modelos' : fase.modelos;
+    return '<div class="fase">'+
+      '<div class="'+headClass+'"><span>FASE '+fase.num+' — '+fase.titulo+'</span><span>'+modLabel+'</span></div>'+
+      items+'</div>';
+  }).join('');
+
+  var w = window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QA '+f.nserie+'</title><style>'+css+'</style></head><body>'+
+    '<button class="btn" onclick="window.print()">🖨️ Imprimir</button>'+
+    '<div class="header">'+
+      '<div><div class="sub">PROTOCOLO QA DE FÁBRICA — Z-PRO Security v10.01</div>'+
+      '<h1>'+empresa.toUpperCase()+'</h1></div>'+
+      '<div style="text-align:right;font-size:11px">'+modelo_pill[modelo]+'<br><span style="font-family:monospace;font-size:13px;font-weight:700">'+f.nserie+'</span></div>'+
+    '</div>'+
+    '<div class="datos">'+
+      '<div class="dato"><div class="l">N° de serie</div><div class="v" style="font-family:monospace">'+f.nserie+'</div></div>'+
+      '<div class="dato"><div class="l">Modelo</div><div class="v">Zpro '+modelo+'</div></div>'+
+      '<div class="dato"><div class="l">Lote</div><div class="v">'+f.lote+'</div></div>'+
+      '<div class="dato"><div class="l">Fecha</div><div class="v">'+today()+'</div></div>'+
+      '<div class="dato"><div class="l">Técnico</div><div class="v">___________________________</div></div>'+
+      '<div class="dato"><div class="l">MAC WiFi</div><div class="v">___________________________</div></div>'+
+    '</div>'+
+    fasesHTML+
+    '<div class="footer">'+
+      '<div>'+
+        '<div style="margin-bottom:8px"><strong>✅ APROBADA para embalaje</strong> &nbsp;&nbsp; <strong>❌ RECHAZADA</strong></div>'+
+        '<div class="sign">Firma técnico: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fecha: ___________</div>'+
+      '</div>'+
+      '<div>'+
+        '<div style="font-size:10px;color:#666;margin-bottom:4px">Observaciones:</div>'+
+        '<div style="border:1px solid #ddd;height:50px;border-radius:4px"></div>'+
+      '</div>'+
+    '</div>'+
+    '</body></html>');
+  w.document.close();
 }
 
 // INIT
