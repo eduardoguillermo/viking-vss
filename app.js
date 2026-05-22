@@ -4878,22 +4878,19 @@ function eliminarKitInstItem(idx){
 function toggleNav(el){
   var items = el.nextElementSibling;
   if(!items||!items.classList.contains('nav-section-items')) return;
-  var isCollapsed = items.style.display === 'none';
-  if(isCollapsed){
-    items.style.display = '';
-    el.innerHTML = el.innerHTML.replace('▸','▾');
-  } else {
-    items.style.display = 'none';
+  var isOpen = items.classList.contains('open');
+  if(isOpen){
+    items.classList.remove('open');
     el.innerHTML = el.innerHTML.replace('▾','▸');
+  } else {
+    items.classList.add('open');
+    el.innerHTML = el.innerHTML.replace('▸','▾');
   }
 }
 
 function initNavCollapse(){
-  document.querySelectorAll('.nav-section-items').forEach(function(el){
-    el.style.display = 'none';
-    var ns = el.previousElementSibling;
-    if(ns) ns.innerHTML = ns.innerHTML.replace('▾','▸');
-  });
+  // All sections closed by default via CSS - nothing needed
+  // Arrows already show ▸ in HTML
 }
 
 // INIT
