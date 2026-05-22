@@ -703,6 +703,52 @@ function elimTipo(i){if(!confirm('¿Eliminar tipo de sensor?'))return;DB.tipos.s
 // =======================================================
 // BACKUP
 // =======================================================
+function reiniciarOperativo(){
+  if(!confirm('⚠️ Esto borrará todos los datos operativos (clientes, presupuestos, movimientos, OC, fabricación, instalaciones y finanzas).\n\nSe PRESERVAN: catálogo, proveedores, configuración, kits y versiones SW.\n\n¿Confirmás?')) return;
+  if(!confirm('Última confirmación. Esta acción no se puede deshacer.')) return;
+
+  // Preserve
+  var config = DB.config;
+  var componentes = DB.componentes;
+  var proveedores = DB.proveedores;
+  var versiones = DB.versiones;
+  var tipos = DB.tipos;
+  var kit = DB.kit;
+  var kitVersion = DB.kitVersion;
+  var kitFecha = DB.kitFecha;
+  var kitinst = DB.kitinst;
+  var kitinstVersion = DB.kitinstVersion;
+  var kitinstFecha = DB.kitinstFecha;
+
+  // Reset operational data
+  DB.clientes = [];
+  DB.presupuestos = [];
+  DB.movimientos = [];
+  DB.ordenes = [];
+  DB.gestiones = [];
+  DB.fondos = [];
+  DB.fabricacion = [];
+  DB.instalaciones = [];
+  DB.nid = 1;
+
+  // Restore preserved
+  DB.config = config;
+  DB.componentes = componentes;
+  DB.proveedores = proveedores;
+  DB.versiones = versiones;
+  DB.tipos = tipos;
+  DB.kit = kit;
+  DB.kitVersion = kitVersion;
+  DB.kitFecha = kitFecha;
+  DB.kitinst = kitinst;
+  DB.kitinstVersion = kitinstVersion;
+  DB.kitinstFecha = kitinstFecha;
+
+  save();
+  alert('✅ Datos operativos reiniciados. Catálogo, proveedores y configuración preservados.');
+  location.reload();
+}
+
 function borrarTodo(){
   if(!confirm('¿Borrar TODOS los datos? Esta accion no se puede deshacer.')) return;
   if(!confirm('Ultima confirmacion. ¿Estas seguro?')) return;
