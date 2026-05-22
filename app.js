@@ -4889,7 +4889,11 @@ function toggleNav(el){
 }
 
 function initNavCollapse(){
-  // All sections start expanded - nothing to do
+  document.querySelectorAll('.nav-section-items').forEach(function(el){
+    el.style.display = 'none';
+    var ns = el.previousElementSibling;
+    if(ns) ns.innerHTML = ns.innerHTML.replace('▾','▸');
+  });
 }
 
 // INIT
