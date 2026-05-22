@@ -1545,7 +1545,7 @@ function renderMovimientos(){
   const q=(document.getElementById('q-mov').value||'').toLowerCase();
   const ft=document.getElementById('mov-tipo-filter').value;
   const list=DB.movimientos.filter(function(m){
-    const comp=DB.componentes.find(function(c){return c.id===m.cid;})||{desc:'',codigo:''};
+    const comp=DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{desc:'—',codigo:'',unidad:''};
     return(!q||(comp.desc+comp.codigo+(m.ref||'')+(m.nota||'')).toLowerCase().includes(q))&&(!ft||m.tipo===ft);
   }).sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
 
