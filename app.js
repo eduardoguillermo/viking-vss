@@ -337,37 +337,7 @@ function guardarCliente(){
 
   save();
 
-  // Auto-create OT if coming from presupuesto
-  if(presIdLink && nuevoCliente){
-    var loteMax=(DB.fabricacion||[]).reduce(function(a,f){return Math.max(a,f.lote||0);},0);
-    var loteNuevo = loteMax + 1;
-    var nserie = getNumSerie(nuevoCliente.modelo, loteNuevo);
-    var ot = {
-      id:DB.nid++,
-      nserie:nserie,
-      modelo:nuevoCliente.modelo,
-      lote:loteNuevo,
-      cliente:nuevoCliente.nombre,
-      clienteId:nuevoCliente.id,
-      presId:presIdLink,
-      fecha:today(),
-      estado:'Pendiente',
-      etapaActual:'mecanizado',
-      obs:'Generada automáticamente desde presupuesto aprobado',
-      etapas:{},
-      materiales:[],
-      fechaInicio:''
-    };
-    ETAPAS_FAB.forEach(function(e){
-      ot.etapas[e.id]={completada:false,fecha:'',responsable:'',obs:'',ops:{}};
-      e.ops.forEach(function(op){ot.etapas[e.id].ops[op]=false;});
-    });
-    if(!DB.fabricacion) DB.fabricacion=[];
-    DB.fabricacion.push(ot);
-    save();
-    alert('Cliente creado correctamente.\nOrden de trabajo generada automáticamente: '+nserie);
-  }
-
+  // OT se crea manualmente desde Movimiento de fondos al registrar el anticipo
   limpiarAlta(); goTo('clientes');
 }
 
