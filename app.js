@@ -3429,6 +3429,42 @@ const RUBROS_ING = ['Anticipos por ventas','Cancelaciones por ventas','Venta de 
   'M.O. servicio de mantenimiento','M.O. actualizaciones','M.O. modificaciones de instalacion','Otros'];
 const RUBROS_EGR = ['Compra de materiales','Gastos de movilidad','Reposicion de stock','Fletes y envios','Otros'];
 
+
+function crearOTDesdeAnticipo(cliId){
+  var c = DB.clientes.find(function(x){return x.id===cliId;});
+  if(!c){ alert('Cliente no encontrado.'); return; }
+
+  var tieneOT = (DB.fabricacion||[]).find(function(o){return o.clienteId===cliId&&o.estado!=='Cancelado';});
+  if(tieneOT){ alert('Este cliente ya tiene una OT: '+tieneOT.nserie); return; }
+
+  var loteMax = (DB.fabricacion||[]).reduce(function(a,f){return Math.max(a,f.lote||0);},0);
+  var loteNuevo = loteMax + 1;
+  var nserie = getNumSerie(c.modelo||'Base', loteNuevo);
+
+  if(!confirm('¿Generar OT de fabricación para '+c.nombre+'?\nN° de serie: '+nserie)) return;
+
+  var ot = {
+    id:DB.nid++, nserie:nserie,
+    modelo:c.modelo||'Base', lote:loteNuevo,
+    cliente:c.nombre, clienteId:c.id,
+    presId:c.presId||null,
+    fecha:today(), estado:'Pendiente',
+    etapaActual:'mecanizado',
+    obs:'Generada desde anticipo de pago',
+    etapas:{}, materiales:[], fechaInicio:''
+  };
+  ETAPAS_FAB.forEach(function(e){
+    ot.etapas[e.id]={completada:false,fecha:'',responsable:'',obs:'',ops:{}};
+    e.ops.forEach(function(op){ot.etapas[e.id].ops[op]=false;});
+  });
+  if(!DB.fabricacion) DB.fabricacion=[];
+  DB.fabricacion.push(ot);
+  c.estadoInstalacion='Programado';
+  save();
+  renderFondos();
+  alert('✅ OT creada: '+nserie+'\nCliente: '+c.nombre);
+}
+
 function renderFondos(){
   var el = document.getElementById('fondos-body');
   if(!el) return;
@@ -3518,6 +3554,18 @@ function renderFondos(){
       '<td style="text-align:right;font-weight:700;color:'+(esIng?'var(--green)':'var(--red)')+'">$'+Math.round(parseFloat(f.monto)||0).toLocaleString('es-AR')+'</td>'+
       '<td style="text-align:right;font-size:11px;color:var(--text2)">'+(usd?'U$S '+usd.toFixed(0):'—')+'</td>'+
       '<td style="display:flex;gap:3px">'+
+        (function(){
+          if(f.rubro==='Anticipos por ventas'&&f.vinculo&&f.vinculo.startsWith('cli:')){
+            var cliId=parseInt(f.vinculo.slice(4));
+            var cliObj=DB.clientes.find(function(x){return x.id===cliId;});
+            if(cliObj){
+              var tieneOT=(DB.fabricacion||[]).find(function(o){return o.clienteId===cliId&&o.estado!=='Cancelado';});
+              if(!tieneOT) return '<button class="btn btn-sm btn-p" onclick="crearOTDesdeAnticipo('+cliId+')" title="Generar OT de fabricación">🔧 OT</button>';
+              return '<span style="font-size:10px;color:var(--green)">✔ OT '+tieneOT.nserie+'</span>';
+            }
+          }
+          return '';
+        })()+
         '<button class="btn btn-sm" onclick="editarFondo('+f.id+')">✏️</button>'+
         '<button class="btn btn-sm" style="color:var(--red)" onclick="borrarFondo('+f.id+')">🗑️</button>'+
       '</td>'+
