@@ -1004,7 +1004,8 @@ function renderPresupuestos(){
   tb.innerHTML=list.map(p=>{
     var clienteYaCreado=p.clienteId&&DB.clientes.find(function(c){return c.id===p.clienteId;});
 const aprBtn=p.estado==='Aprobado'&&!clienteYaCreado?'<button class="btn btn-sm btn-g" onclick="convertirCliente('+p.id+')">👤 Cliente</button>':(p.estado==='Aprobado'&&clienteYaCreado?'<span style="font-size:11px;color:var(--green)">✔ '+clienteYaCreado.nombre+'</span>' : '');
-    return '<tr>'+
+    var esKit=m.tipo==='Salida'&&(m.motivo||'').toLowerCase().includes('kit');
+    return '<tr'+(esKit?' style="background:rgba(255,193,7,0.15)"':'')+'>'+
       '<td><strong>'+p.nombre+'</strong></td>'+
       '<td>'+p.dir+(p.barrio?' · '+p.barrio:'')+'</td>'+
       '<td>'+mPill(p.modelo)+'</td>'+
@@ -1406,6 +1407,7 @@ function sortStock(col){
 }
 
 function renderStock(){
+  var tc=parseFloat((DB.config&&DB.config.tipoCambio)||1);
   fillCatFilter('stock-cat-filter');
   const fcat=document.getElementById('stock-cat-filter').value;
   const farea=document.getElementById('stock-area-filter')?document.getElementById('stock-area-filter').value:'';
@@ -1441,7 +1443,7 @@ function renderStock(){
     '<div class="stat"><div class="stat-n blue">$'+Math.round(valorTotal).toLocaleString('es-AR')+'</div><div class="stat-l">Valor inventario</div></div>';
 
   const tb=document.getElementById('tbody-stock');
-  if(!list.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin componentes. Cargalos desde Catálogo.</td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="10" class="empty">Sin componentes. Cargalos desde Catálogo.</td></tr>';return;}
   tb.innerHTML=list.map(function(c){
     const cant=stockActual(c.id);
     return '<tr>'+
@@ -1452,6 +1454,8 @@ function renderStock(){
       '<td>'+(c.min||0)+' '+c.unidad+'</td>'+
       '<td>'+(c.ubicacion||'—')+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
+      '<td style="text-align:right;font-size:11px">'+(c.costo?'$'+Math.round(parseFloat(c.costo)).toLocaleString('es-AR'):'—')+'</td>'+
+      '<td style="text-align:right;font-size:11px">'+(c.costoUSD?'U$S '+parseFloat(c.costoUSD).toFixed(1):(c.costo&&tc>1?'U$S '+Math.round(parseFloat(c.costo)/tc):'—'))+'</td>'+
       '<td style="display:flex;gap:4px">'+
         '<button class="btn btn-sm btn-p" onclick="modalMovimiento(\'Entrada\','+c.id+')" title="Entrada">📥</button>'+
         '<button class="btn btn-sm" onclick="modalMovimiento(\'Salida manual\','+c.id+')" title="Salida">📤</button>'+
@@ -4609,23 +4613,20 @@ function completarEtapaFab(otId, etapaId){
     if(!piExist){
       var piNuevo=crearPedidoInstalacion(f.id);
       if(piNuevo){
-        // Warning about component return
+        // Ask if there are materials to return
         var matPendiente=(f.materiales||[]).filter(function(m){return m.cant>(m.devuelto||0);});
-        if(matPendiente.length){
-          var msg='\u26a0\ufe0f Hay '+matPendiente.length+' componente'+(matPendiente.length!==1?'s':'')+' pendientes de devoluci\u00f3n al stock:\n';
+        if(matPendiente.length&&confirm('\u00bfHay materiales para devolver al stock?')){
+          var msg='Seleccioná los materiales a devolver:\n\n';
           matPendiente.forEach(function(m){msg+='\u2022 '+m.compNombre+': '+(m.cant-(m.devuelto||0))+'\n';});
-          msg+='\n\u00bfDevolver todos al stock ahora?';
-          if(confirm(msg)){
+          if(confirm(msg+'\n\u00bfDevolver todos al stock ahora?')){
             matPendiente.forEach(function(m){
               DB.movimientos.push({id:DB.nid++,compId:m.compId,fecha:today(),tipo:'Entrada',motivo:'Devoluci\u00f3n fabricaci\u00f3n '+f.nserie,ref:f.nserie,cant:m.cant-(m.devuelto||0),precio:0});
               m.devuelto=m.cant;
             });
             save();
           }
-          alert('\u2705 Fabricaci\u00f3n terminada. Pedido: '+piNuevo.numero);
-        } else {
-          alert('\u2705 Fabricaci\u00f3n terminada. Pedido: '+piNuevo.numero);
         }
+        alert('\u2705 Fabricaci\u00f3n terminada. Pedido: '+piNuevo.numero);
       }
     }
   }
@@ -4846,31 +4847,38 @@ function crearPedidoInstalacion(otId){
     });
   });
 
-  // 2. Zigbee sensors from client
-  if(cliente&&cliente.zigbee&&cliente.zigbee.length){
-    // Group zigbee by model to count
-    var zigbeeMap={};
-    cliente.zigbee.forEach(function(z){
-      var key=(z.marca||'')+'|'+(z.modelo||'')+'|'+(z.tipo||'');
-      if(!zigbeeMap[key]) zigbeeMap[key]={tipo:z.tipo||'',marca:z.marca||'',modelo:z.modelo||'',cant:0};
-      zigbeeMap[key].cant++;
-    });
-    Object.values(zigbeeMap).forEach(function(z){
-      // Try to find in componentes
-      var comp=DB.componentes.find(function(c){
-        return c.desc&&c.desc.toLowerCase().includes((z.modelo||'').toLowerCase())&&(z.modelo);
-      })||null;
-      kitItems.push({
-        compId:comp?comp.id:null,
-        compCodigo:comp?comp.codigo:'',
-        compNombre:z.tipo+(z.marca?' '+z.marca:'')+(z.modelo?' '+z.modelo:''),
-        cant:z.cant,
-        unidad:'u',
-        origen:'zigbee',
-        devuelto:0
-      });
+  // 2. Zigbee sensors - from presupuesto (qty data) or from client zigbee list
+  var sensoresPI = {};
+  // Try presupuesto first (has qty per type)
+  var presCliente = cliente&&cliente.presId ? DB.presupuestos.find(function(p){return p.id===cliente.presId;}) : null;
+  if(presCliente&&presCliente.sensores&&typeof presCliente.sensores==='object'&&!Array.isArray(presCliente.sensores)){
+    Object.entries(presCliente.sensores).forEach(function(entry){
+      var tipo=entry[0]; var data=entry[1];
+      if(data&&data.qty&&data.qty>0) sensoresPI[tipo]={cant:data.qty,tipo:tipo};
     });
   }
+  // Fallback: count from cliente.zigbee array
+  if(!Object.keys(sensoresPI).length&&cliente&&cliente.zigbee&&cliente.zigbee.length){
+    cliente.zigbee.forEach(function(z){
+      var t=z.tipo||'Sensor';
+      if(!sensoresPI[t]) sensoresPI[t]={cant:0,tipo:t};
+      sensoresPI[t].cant++;
+    });
+  }
+  Object.values(sensoresPI).forEach(function(z){
+    var comp=DB.componentes.find(function(c){
+      return c.area==='Instalacion'&&c.desc&&c.desc.toLowerCase().includes(z.tipo.toLowerCase());
+    })||null;
+    kitItems.push({
+      compId:comp?comp.id:null,
+      compCodigo:comp?comp.codigo:'',
+      compNombre:z.tipo,
+      cant:z.cant,
+      unidad:'u',
+      origen:'zigbee',
+      devuelto:0
+    });
+  });
 
   var pi={
     id:DB.nid++,
