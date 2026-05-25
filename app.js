@@ -3512,7 +3512,7 @@ function pdfRecibo(fondoId){
       '</div>'+
       '<div class="concepto-box">Recibo de anticipo</div>'+
       '<div class="datos">'+
-        '<div class="l">Cliente</div><div class="v">'+(cliente?cliente.nombre:(fondo.desc||'—'))+'</div>'+
+        '<div class="l">Cliente</div><div class="v bold">'+(cliente?cliente.nombre:(fondo.desc||'—'))+'</div>'+
         '<div class="l">Domicilio</div><div class="v">'+(cliente?(cliente.lote||'—')+(cliente.barrio?' · '+cliente.barrio:''):'—')+'</div>'+
         '<div class="l">Teléfono</div><div class="v">'+(cliente?cliente.tel||'—':'—')+'</div>'+
         '<div class="l">Presupuesto</div><div class="v">'+presNum+(presModelo!=='—'?' — '+presModelo:'')+'</div>'+
@@ -3540,32 +3540,33 @@ function pdfRecibo(fondoId){
   };
 
   var css = '*{box-sizing:border-box;margin:0;padding:0}'+
-    'body{font-family:Arial,sans-serif;padding:0}'+
-    '.page{width:210mm;background:#fff;display:grid;grid-template-rows:repeat(3,1fr)}'+
-    '.recibo{padding:16px 20px;border-bottom:2px dashed #bbb;position:relative;display:flex;flex-direction:column;justify-content:space-between;height:99mm}'+
+    'body{font-family:Arial,sans-serif;padding:0;width:210mm}'+
+    '.page{width:210mm;background:#fff;display:grid;grid-template-rows:repeat(3,99mm)}'+
+    '.recibo{padding:16px 20px;border-bottom:2px dashed #bbb;position:relative;display:flex;flex-direction:column;justify-content:space-between;height:99mm;overflow:hidden}'+
     '.recibo:last-child{border-bottom:none}'+
     '.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #B71C1C;padding-bottom:5px;margin-bottom:7px}'+
-    '.empresa{font-size:14px;font-weight:700;color:#B71C1C}'+
-    '.empresa-sub{font-size:10px;color:#666;margin-top:2px}'+
-    '.rec-num .label{font-size:10px;color:#666;text-transform:uppercase;text-align:right}'+
-    '.rec-num .num{font-size:15px;font-weight:700;font-family:monospace;color:#111}'+
-    '.concepto-box{background:#B71C1C;color:#fff;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 0;margin-bottom:7px;border-radius:2px}'+
-    '.datos{display:grid;grid-template-columns:90px 1fr;gap:3px 10px;font-size:11px;margin-bottom:7px}'+
+    '.empresa{font-size:17px;font-weight:700;color:#B71C1C}'+
+    '.empresa-sub{font-size:12px;color:#666;margin-top:2px}'+
+    '.rec-num .label{font-size:12px;color:#666;text-transform:uppercase;text-align:right}'+
+    '.rec-num .num{font-size:18px;font-weight:700;font-family:monospace;color:#111}'+
+    '.concepto-box{background:#B71C1C;color:#fff;text-align:center;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:5px 0;margin-bottom:8px;border-radius:0;margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px}'+
+    '.datos{display:grid;grid-template-columns:100px 1fr;gap:4px 10px;font-size:13px;margin-bottom:8px}'+
     '.datos .l{color:#666;font-weight:700;text-transform:uppercase}'+
     '.datos .v{color:#111}'+
-    '.monto-box{background:#f8f8f8;border:1px solid #ddd;border-radius:3px;padding:5px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}'+
-    '.monto-label{font-size:10px;color:#666;text-transform:uppercase;font-weight:700}'+
-    '.monto-valor{font-size:20px;font-weight:700;color:#B71C1C}'+
-    '.monto-usd{font-size:10px;color:#999;text-align:right}'+
+    '.datos .v.bold{font-weight:700;color:#000}'+
+    '.monto-box{background:#f8f8f8;border:1px solid #ddd;border-radius:3px;padding:6px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}'+
+    '.monto-label{font-size:12px;color:#666;text-transform:uppercase;font-weight:700}'+
+    '.monto-valor{font-size:24px;font-weight:700;color:#B71C1C}'+
+    '.monto-usd{font-size:12px;color:#999;text-align:right}'+
     '.footer{display:flex;justify-content:space-between;align-items:flex-end}'+
-    '.firma-area{width:200px}'+
-    '.firma-espacio{height:50px}'+
-    '.firma-linea{border-top:1.5px solid #333;padding-top:4px;font-size:10px;color:#555;text-align:center}'+
+    '.firma-area{width:220px}'+
+    '.firma-espacio{height:52px}'+
+    '.firma-linea{border-top:1.5px solid #333;padding-top:4px;font-size:11px;color:#555;text-align:center}'+
     '.fecha-box{text-align:right}'+
-    '.fecha-label{font-size:10px;color:#666;text-transform:uppercase;font-weight:700}'+
-    '.fecha-val{font-size:12px;font-weight:700;color:#333}'+
-    '.cut{position:absolute;bottom:-1px;left:0;right:0;text-align:center;font-size:9px;color:#ccc;letter-spacing:2px}'+
-    '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:7px 16px;border-radius:5px;cursor:pointer;font-size:11px}'+
+    '.fecha-label{font-size:11px;color:#666;text-transform:uppercase;font-weight:700}'+
+    '.fecha-val{font-size:13px;font-weight:700;color:#333}'+
+    '.cut{display:block;width:100%;border:none;border-top:2px dashed #bbb;margin:0}'+
+    '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:7px 16px;border-radius:5px;cursor:pointer;font-size:12px}'+
     '@media print{.btn{display:none}@page{size:A4 portrait;margin:0}}';
 
   var w = window.open('','_blank');
