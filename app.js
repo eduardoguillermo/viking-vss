@@ -765,6 +765,55 @@ function elimTipo(i){if(!confirm('¿Eliminar tipo de sensor?'))return;DB.tipos.s
 // =======================================================
 // BACKUP
 // =======================================================
+
+function borrarExceptoLogistica(){
+  if(!confirm('\u26a0\ufe0f Esto borrará clientes, presupuestos, fondos, fabricación e instalaciones.\n\nSe PRESERVA toda la logística: catálogo, stock, proveedores, OC, movimientos de stock, kits y configuración.\n\n¿Confirmás?')) return;
+  if(!confirm('Última confirmación. Esta acción no se puede deshacer.')) return;
+
+  // Preserve logistica
+  var componentes = DB.componentes;
+  var proveedores = DB.proveedores;
+  var movimientos = DB.movimientos;
+  var ordenes = DB.ordenes;
+  var kit = DB.kit;
+  var kitVersion = DB.kitVersion;
+  var kitFecha = DB.kitFecha;
+  var kitinst = DB.kitinst;
+  var kitinstVersion = DB.kitinstVersion;
+  var kitinstFecha = DB.kitinstFecha;
+  var versiones = DB.versiones;
+  var tipos = DB.tipos;
+  var config = DB.config;
+
+  // Clear operational
+  DB.clientes = [];
+  DB.presupuestos = [];
+  DB.fondos = [];
+  DB.gestiones = [];
+  DB.fabricacion = [];
+  DB.instalaciones = [];
+  DB.nid = 1;
+
+  // Restore
+  DB.componentes = componentes;
+  DB.proveedores = proveedores;
+  DB.movimientos = movimientos;
+  DB.ordenes = ordenes;
+  DB.kit = kit;
+  DB.kitVersion = kitVersion;
+  DB.kitFecha = kitFecha;
+  DB.kitinst = kitinst;
+  DB.kitinstVersion = kitinstVersion;
+  DB.kitinstFecha = kitinstFecha;
+  DB.versiones = versiones;
+  DB.tipos = tipos;
+  DB.config = config;
+
+  save();
+  alert('\u2705 Datos borrados. Logística preservada.');
+  location.reload();
+}
+
 function reiniciarOperativo(){
   if(!confirm('⚠️ Esto borrará todos los datos operativos (clientes, presupuestos, movimientos, OC, fabricación, instalaciones y finanzas).\n\nSe PRESERVAN: catálogo, proveedores, configuración, kits y versiones SW.\n\n¿Confirmás?')) return;
   if(!confirm('Última confirmación. Esta acción no se puede deshacer.')) return;
@@ -3492,30 +3541,30 @@ function pdfRecibo(fondoId){
 
   var css = '*{box-sizing:border-box;margin:0;padding:0}'+
     'body{font-family:Arial,sans-serif;padding:0}'+
-    '.page{width:210mm;min-height:297mm;background:#fff;display:grid;grid-template-rows:1fr 1fr 1fr}'+
-    '.recibo{padding:14px 18px;border-bottom:2px dashed #bbb;position:relative}'+
+    '.page{width:210mm;background:#fff;display:grid;grid-template-rows:repeat(3,1fr)}'+
+    '.recibo{padding:16px 20px;border-bottom:2px dashed #bbb;position:relative;display:flex;flex-direction:column;justify-content:space-between;height:99mm}'+
     '.recibo:last-child{border-bottom:none}'+
-    '.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;border-bottom:2px solid #B71C1C;padding-bottom:5px}'+
-    '.empresa{font-size:11px;font-weight:700;color:#B71C1C}'+
-    '.empresa-sub{font-size:8px;color:#666}'+
-    '.rec-num .label{font-size:8px;color:#666;text-transform:uppercase;text-align:right}'+
-    '.rec-num .num{font-size:13px;font-weight:700;font-family:monospace;color:#111}'+
-    '.concepto-box{background:#B71C1C;color:#fff;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 0;margin-bottom:8px;border-radius:2px}'+
-    '.datos{display:grid;grid-template-columns:80px 1fr;gap:2px 8px;font-size:9px;margin-bottom:8px}'+
+    '.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #B71C1C;padding-bottom:5px;margin-bottom:7px}'+
+    '.empresa{font-size:14px;font-weight:700;color:#B71C1C}'+
+    '.empresa-sub{font-size:10px;color:#666;margin-top:2px}'+
+    '.rec-num .label{font-size:10px;color:#666;text-transform:uppercase;text-align:right}'+
+    '.rec-num .num{font-size:15px;font-weight:700;font-family:monospace;color:#111}'+
+    '.concepto-box{background:#B71C1C;color:#fff;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 0;margin-bottom:7px;border-radius:2px}'+
+    '.datos{display:grid;grid-template-columns:90px 1fr;gap:3px 10px;font-size:11px;margin-bottom:7px}'+
     '.datos .l{color:#666;font-weight:700;text-transform:uppercase}'+
     '.datos .v{color:#111}'+
-    '.monto-box{background:#f8f8f8;border:1px solid #ddd;border-radius:3px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}'+
-    '.monto-label{font-size:8px;color:#666;text-transform:uppercase;font-weight:700}'+
-    '.monto-valor{font-size:16px;font-weight:700;color:#B71C1C}'+
-    '.monto-usd{font-size:9px;color:#999;text-align:right}'+
-    '.footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:6px}'+
-    '.firma-area{width:180px}'+
-    '.firma-espacio{height:36px}'+
-    '.firma-linea{border-top:1px solid #333;padding-top:3px;font-size:8px;color:#555;text-align:center}'+
+    '.monto-box{background:#f8f8f8;border:1px solid #ddd;border-radius:3px;padding:5px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}'+
+    '.monto-label{font-size:10px;color:#666;text-transform:uppercase;font-weight:700}'+
+    '.monto-valor{font-size:20px;font-weight:700;color:#B71C1C}'+
+    '.monto-usd{font-size:10px;color:#999;text-align:right}'+
+    '.footer{display:flex;justify-content:space-between;align-items:flex-end}'+
+    '.firma-area{width:200px}'+
+    '.firma-espacio{height:50px}'+
+    '.firma-linea{border-top:1.5px solid #333;padding-top:4px;font-size:10px;color:#555;text-align:center}'+
     '.fecha-box{text-align:right}'+
-    '.fecha-label{font-size:8px;color:#666;text-transform:uppercase;font-weight:700}'+
-    '.fecha-val{font-size:10px;font-weight:700;color:#333}'+
-    '.cut{position:absolute;bottom:-1px;left:0;right:0;text-align:center;font-size:9px;color:#bbb;letter-spacing:2px}'+
+    '.fecha-label{font-size:10px;color:#666;text-transform:uppercase;font-weight:700}'+
+    '.fecha-val{font-size:12px;font-weight:700;color:#333}'+
+    '.cut{position:absolute;bottom:-1px;left:0;right:0;text-align:center;font-size:9px;color:#ccc;letter-spacing:2px}'+
     '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:7px 16px;border-radius:5px;cursor:pointer;font-size:11px}'+
     '@media print{.btn{display:none}@page{size:A4 portrait;margin:0}}';
 
