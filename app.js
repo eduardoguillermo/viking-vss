@@ -3400,6 +3400,136 @@ const RUBROS_ING = ['Anticipos por ventas','Cancelaciones por ventas','Venta de 
 const RUBROS_EGR = ['Compra de materiales','Gastos de movilidad','Reposicion de stock','Fletes y envios','Otros'];
 
 
+
+function getNumRecibo(){
+  var yr = new Date().getFullYear();
+  var existing = (DB.fondos||[]).filter(function(f){
+    return f.numRecibo && f.numRecibo.startsWith('REC-'+yr);
+  });
+  var max = 0;
+  existing.forEach(function(f){
+    var n = parseInt((f.numRecibo||'').split('-')[2]||'0');
+    if(n>max) max=n;
+  });
+  return 'REC-'+yr+'-'+String(max+1).padStart(4,'0');
+}
+
+function pdfRecibo(fondoId){
+  var fondo = (DB.fondos||[]).find(function(x){return x.id===fondoId;});
+  if(!fondo) return;
+
+  var empresa = (DB.config&&DB.config.empresa)||'Viking Security Systems';
+  var empresaSub = (DB.config&&DB.config.desc_Base)?'Ingeniería en Sistemas de Seguridad':'Ingeniería en Sistemas de Seguridad';
+  var tc = (DB.config&&DB.config.tipoCambio)||1;
+
+  // Get client data
+  var cliente = null;
+  if(fondo.vinculo&&fondo.vinculo.startsWith('cli:')){
+    cliente = DB.clientes.find(function(c){return c.id===parseInt(fondo.vinculo.slice(4));});
+  }
+
+  // Get presupuesto
+  var pres = null;
+  if(cliente&&cliente.presId){
+    pres = DB.presupuestos.find(function(p){return p.id===cliente.presId;});
+  }
+
+  // Assign recibo number if not yet assigned
+  if(!fondo.numRecibo){
+    fondo.numRecibo = getNumRecibo();
+    save();
+  }
+
+  var monto = parseFloat(fondo.monto)||0;
+  var usd = tc>1 ? 'U$S '+Math.round(monto/tc).toLocaleString('es-AR')+' (TC $'+tc+')' : null;
+
+  var presNum = pres ? (function(){
+    var yr2=new Date(pres.fecha||today()).getFullYear();
+    return 'VSS-'+yr2+'-'+String(pres.correlativo||pres.id).padStart(4,'0');
+  })() : '—';
+  var presModelo = pres ? ('Zpro '+(pres.modelo||'Base')) : '—';
+
+  var reciboHTML = function(num){
+    return '<div class="recibo">'+
+      '<div class="header">'+
+        '<div>'+
+          '<div class="empresa">'+empresa.toUpperCase()+'</div>'+
+          '<div class="empresa-sub">'+empresaSub+'</div>'+
+        '</div>'+
+        '<div class="rec-num">'+
+          '<div class="label">Recibo N°</div>'+
+          '<div class="num">'+fondo.numRecibo+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="concepto-box">Recibo de anticipo</div>'+
+      '<div class="datos">'+
+        '<div class="l">Cliente</div><div class="v">'+(cliente?cliente.nombre:(fondo.desc||'—'))+'</div>'+
+        '<div class="l">Domicilio</div><div class="v">'+(cliente?(cliente.lote||'—')+(cliente.barrio?' · '+cliente.barrio:''):'—')+'</div>'+
+        '<div class="l">Teléfono</div><div class="v">'+(cliente?cliente.tel||'—':'—')+'</div>'+
+        '<div class="l">Presupuesto</div><div class="v">'+presNum+(presModelo!=='—'?' — '+presModelo:'')+'</div>'+
+        '<div class="l">Concepto</div><div class="v">Anticipo por instalación sistema de alarma IoT</div>'+
+      '</div>'+
+      '<div class="monto-box">'+
+        '<div class="monto-label">Monto recibido</div>'+
+        '<div>'+
+          '<div class="monto-valor">$'+Math.round(monto).toLocaleString('es-AR')+'</div>'+
+          (usd?'<div class="monto-usd">'+usd+'</div>':'<div class="monto-usd">—</div>')+
+        '</div>'+
+      '</div>'+
+      '<div class="footer">'+
+        '<div class="firma-area">'+
+          '<div class="firma-espacio"></div>'+
+          '<div class="firma-linea">'+empresa+'</div>'+
+        '</div>'+
+        '<div class="fecha-box">'+
+          '<div class="fecha-label">Fecha</div>'+
+          '<div class="fecha-val">'+fondo.fecha+'</div>'+
+        '</div>'+
+      '</div>'+
+      (num<3?'<div class="cut">✂ · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·</div>':'')
+    +'</div>';
+  };
+
+  var css = '*{box-sizing:border-box;margin:0;padding:0}'+
+    'body{font-family:Arial,sans-serif;padding:0}'+
+    '.page{width:210mm;min-height:297mm;background:#fff;display:grid;grid-template-rows:1fr 1fr 1fr}'+
+    '.recibo{padding:14px 18px;border-bottom:2px dashed #bbb;position:relative}'+
+    '.recibo:last-child{border-bottom:none}'+
+    '.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;border-bottom:2px solid #B71C1C;padding-bottom:5px}'+
+    '.empresa{font-size:11px;font-weight:700;color:#B71C1C}'+
+    '.empresa-sub{font-size:8px;color:#666}'+
+    '.rec-num .label{font-size:8px;color:#666;text-transform:uppercase;text-align:right}'+
+    '.rec-num .num{font-size:13px;font-weight:700;font-family:monospace;color:#111}'+
+    '.concepto-box{background:#B71C1C;color:#fff;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 0;margin-bottom:8px;border-radius:2px}'+
+    '.datos{display:grid;grid-template-columns:80px 1fr;gap:2px 8px;font-size:9px;margin-bottom:8px}'+
+    '.datos .l{color:#666;font-weight:700;text-transform:uppercase}'+
+    '.datos .v{color:#111}'+
+    '.monto-box{background:#f8f8f8;border:1px solid #ddd;border-radius:3px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}'+
+    '.monto-label{font-size:8px;color:#666;text-transform:uppercase;font-weight:700}'+
+    '.monto-valor{font-size:16px;font-weight:700;color:#B71C1C}'+
+    '.monto-usd{font-size:9px;color:#999;text-align:right}'+
+    '.footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:6px}'+
+    '.firma-area{width:180px}'+
+    '.firma-espacio{height:36px}'+
+    '.firma-linea{border-top:1px solid #333;padding-top:3px;font-size:8px;color:#555;text-align:center}'+
+    '.fecha-box{text-align:right}'+
+    '.fecha-label{font-size:8px;color:#666;text-transform:uppercase;font-weight:700}'+
+    '.fecha-val{font-size:10px;font-weight:700;color:#333}'+
+    '.cut{position:absolute;bottom:-1px;left:0;right:0;text-align:center;font-size:9px;color:#bbb;letter-spacing:2px}'+
+    '.btn{position:fixed;top:12px;right:12px;background:#B71C1C;color:#fff;border:none;padding:7px 16px;border-radius:5px;cursor:pointer;font-size:11px}'+
+    '@media print{.btn{display:none}@page{size:A4 portrait;margin:0}}';
+
+  var w = window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo '+fondo.numRecibo+'</title><style>'+css+'</style></head><body>'+
+    '<button class="btn" onclick="window.print()">🖨️ Imprimir</button>'+
+    '<div class="page">'+
+      reciboHTML(1)+
+      reciboHTML(2)+
+      reciboHTML(3)+
+    '</div></body></html>');
+  w.document.close();
+}
+
 function crearOTDesdeAnticipo(cliId){
   var c = DB.clientes.find(function(x){return x.id===cliId;});
   if(!c){ alert('Cliente no encontrado.'); return; }
@@ -3536,6 +3666,8 @@ function renderFondos(){
           }
           return '';
         })()+
+        (f.rubro==='Anticipos por ventas'?'<button class="btn btn-sm" onclick="pdfRecibo('+f.id+')" title="Recibo de anticipo">🧾</button>':'')+
+        (f.rubro==='Anticipos por ventas'?'<button class="btn btn-sm" onclick="pdfRecibo('+f.id+')" title="Recibo">🧾</button>':'')+
         '<button class="btn btn-sm" onclick="editarFondo('+f.id+')">✏️</button>'+
         '<button class="btn btn-sm" style="color:var(--red)" onclick="borrarFondo('+f.id+')">🗑️</button>'+
       '</td>'+
