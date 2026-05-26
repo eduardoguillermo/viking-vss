@@ -159,7 +159,13 @@ function verPill(t){ const vp={Mayor:'p-r',Menor:'p-a',Patch:'p-x'}; return `<sp
 function garPill(g){ return g==='Sí'?'<span class="pill p-g">Sí</span>':'<span class="pill p-x">No</span>'; }
 function tipMantPill(t){ const tp={Correctivo:'p-r',Configuración:'p-b',Actualización:'p-g','Cambio de pilas':'p-p'}; return `<span class="pill ${tp[t]||'p-x'}">${t||'Correctivo'}</span>`; }
 function fbox(l,v,mono=false){ return `<div class="fbox"><div class="fl">${l}</div><div class="fv${mono?' mono':''}">${v||'—'}</div></div>`; }
-function today(){ return new Date().toISOString().slice(0,10); }
+function today(){
+  var d=new Date();
+  var y=d.getFullYear();
+  var m=String(d.getMonth()+1).padStart(2,'0');
+  var day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
 
 // =======================================================
 // STATS
