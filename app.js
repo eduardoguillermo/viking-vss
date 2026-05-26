@@ -685,6 +685,7 @@ function renderMant(){
       <td>${garPill(m.garantia)}</td>
       <td>${garPill(m.garantia)}</td>
       <td>${m.tecnico||'—'}</td>
+      <td style="display:flex;gap:3px"><button class="btn btn-sm btn-p" onclick="exportarMant(${c.id},${i})" title="Exportar al móvil">📤</button><button class="btn btn-sm" onclick="modalMant(${i})" title="Editar">✏️</button></td>
     </tr>`).join('')}</tbody></table>`;
 }
 
