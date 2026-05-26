@@ -5650,10 +5650,17 @@ function exportarMant(clienteId, mantIdx){
   if(!m) return;
 
   // Include catalog for material selection on mobile
+  // Enrich registro with client data
+  var registroCompleto = JSON.parse(JSON.stringify(m));
+  registroCompleto.cliente = c.nombre;
+  registroCompleto.modelo = c.modelo||'';
+  if(!registroCompleto.nserie) registroCompleto.nserie = c.mac||'';
+  if(!registroCompleto.garantiaVence) registroCompleto.garantiaVence = c.actaGarantiaVence||'';
+
   var export_data = {
     tipo: 'viking_mantenimiento',
     version: '1.0',
-    registro: JSON.parse(JSON.stringify(m)),
+    registro: registroCompleto,
     clienteId: clienteId,
     mantIdx: mantIdx,
     catalogo: (DB.componentes||[]).map(function(comp){
