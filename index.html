@@ -627,6 +627,12 @@ function toggleNav(el){
           </div>
           <hr class="div">
           <div style="margin-bottom:20px">
+            <div class="sectitle">Importar registro de mantenimiento</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Importar un registro completado desde la app móvil. Se adosa automáticamente a la ficha del cliente.</p>
+            <label class="btn" style="cursor:pointer;display:inline-block">📥 Importar mantenimiento<input type="file" accept=".json" style="display:none" onchange="importarMant(this)"></label>
+          </div>
+          <hr class="div">
+          <div style="margin-bottom:20px">
             <div class="sectitle">Borrar todo excepto logística</div>
             <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Borra clientes, presupuestos, movimientos de fondos, fabricación, instalaciones y finanzas. <strong>Preserva</strong> todo el catálogo, stock, proveedores, OC, movimientos de stock, kits y configuración.</p>
             <button class="btn btn-d" onclick="borrarExceptoLogistica()" style="background:#6A1B9A">🗑️ Borrar todo excepto logística</button>

@@ -676,15 +676,15 @@ function renderMant(){
   if(!c.mant.length){document.getElementById('cont-mant').innerHTML='<div class="empty">🛠️ Sin visitas registradas</div>';return;}
   document.getElementById('cont-mant').innerHTML=`<table>
     <colgroup><col style="width:9%"><col style="width:10%"><col style="width:13%"><col style="width:12%"><col style="width:12%"><col style="width:7%"><col style="width:7%"><col style="width:10%"><col style="width:14%"><col style="width:6%"></colgroup>
-    <thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo llamado</th><th>Falla detectada</th><th>Reparación</th><th>Garantía</th><th>Costo</th><th>Técnico</th><th>Observaciones</th><th></th></tr></thead>
+    <thead><tr><th>N°</th><th>Fecha</th><th>Tipo</th><th>Motivo llamado</th><th>Falla detectada</th><th>Reparación</th><th>Garantía</th><th>Técnico</th><th></th></tr></thead>
     <tbody>${c.mant.map((m,i)=>`<tr>
+      <td style="font-family:monospace;font-size:10px">${m.numero||'—'}</td>
       <td>${m.fecha}</td>
       <td>${tipMantPill(m.tipo)}</td>
       <td>${m.motivo}</td><td>${m.falla||'—'}</td><td>${m.reparacion||'—'}</td>
       <td>${garPill(m.garantia)}</td>
-      <td>$${Math.round(parseFloat(m.costo)||0).toLocaleString('es-AR').toLocaleString('es-AR')}</td>
-      <td>${m.tecnico||'—'}</td><td>${m.obs||'—'}</td>
-      <td><button class="btn btn-sm" onclick="modalMant(${i})" title="Editar">✏️</button></td>
+      <td>${garPill(m.garantia)}</td>
+      <td>${m.tecnico||'—'}</td>
     </tr>`).join('')}</tbody></table>`;
 }
 
@@ -704,24 +704,93 @@ function getMantDatalist(campo, dlId){
 function modalMant(idx){
   const c=gc();
   const m=idx>=0?c.mant[idx]:{};
-  openModal(idx>=0?'Editar visita de mantenimiento':'Registrar visita de mantenimiento',`
+  const nserie=c.zigbee&&c.zigbee.length?c.mac||'—':c.mac||'—';
+  const numMant=m.numero||getNumMant();
+  const tipoOpts=['Correctivo','Preventivo','Configuración','Actualización de firmware','Cambio de pilas','Garantía','Otro'];
+  openModal(idx>=0?'Editar registro — '+m.numero:'Nuevo registro de mantenimiento',`
     <div class="fg2">
+      <div class="fg"><label>N° Registro</label><div style="padding:6px 9px;font-family:monospace;font-weight:700;color:var(--primary)">${numMant}</div></div>
       <div class="fg"><label>Fecha *</label><input id="mt-f" type="date" value="${m.fecha||today()}"></div>
-      <div class="fg"><label>Tipo *</label><select id="mt-ti">${['Correctivo','Configuración','Actualización','Cambio de pilas'].map(t=>`<option${(m.tipo||'')==t?' selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="fg"><label>Motivo del llamado *</label><input id="mt-mo" value="${m.motivo||''}" placeholder="Ej: Sirena no activa, falsa alarma..." list="dl-mt-mo">${getMantDatalist('motivo','dl-mt-mo')}</div>
-      <div class="fg"><label>Falla detectada</label><input id="mt-fa" value="${m.falla||''}" placeholder="Ej: Conexión suelta" list="dl-mt-fa">${getMantDatalist('falla','dl-mt-fa')}</div>
-      <div class="fg"><label>Reparación realizada</label><input id="mt-re" value="${m.reparacion||''}" placeholder="Ej: Reconexión terminal" list="dl-mt-re">${getMantDatalist('reparacion','dl-mt-re')}</div>
-      <div class="fg"><label>En garantía</label><select id="mt-g"><option${(m.garantia||'No')==='No'?' selected':''}>No</option><option${(m.garantia||'')==='Sí'?' selected':''}>Sí</option></select></div>
-      <div class="fg"><label>Costo ($)</label><input id="mt-c" type="number" min="0" value="${m.costo||0}"></div>
       <div class="fg"><label>Técnico</label><input id="mt-te" value="${m.tecnico||''}" placeholder="Nombre del técnico"></div>
-      <div class="fg full"><label>Observaciones</label><textarea id="mt-o">${m.obs||''}</textarea></div>
+      <div class="fg"><label>Tipo *</label><select id="mt-ti">${tipoOpts.map(t=>`<option${(m.tipo||'')==t?' selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="fg"><label>N° Serie sistema</label><input id="mt-ns" value="${m.nserie||c.mac||''}" placeholder="VSS-K2605-02-001"></div>
+      <div class="fg"><label>Garantía válida hasta</label><input id="mt-gv" type="date" value="${m.garantiaVence||c.actaGarantiaVence||''}"></div>
+      <div class="fg full"><label>Motivo del llamado *</label><input id="mt-mo" value="${m.motivo||''}" placeholder="Ej: Sirena no activa, falsa alarma..." list="dl-mt-mo">${getMantDatalist('motivo','dl-mt-mo')}</div>
+      <div class="fg full"><label>Falla detectada</label><input id="mt-fa" value="${m.falla||''}" placeholder="Ej: Conexión suelta, sensor desincronizado" list="dl-mt-fa">${getMantDatalist('falla','dl-mt-fa')}</div>
+      <div class="fg full"><label>Reparación realizada</label><input id="mt-re" value="${m.reparacion||''}" placeholder="Ej: Reconexión terminal, re-vinculación Zigbee" list="dl-mt-re">${getMantDatalist('reparacion','dl-mt-re')}</div>
+      <div class="fg full"><label>Material utilizado (del stock)</label><div id="mt-mat-list" style="margin-bottom:6px">${(m.materiales||[]).map((mat,i)=>'<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><span style="font-size:11px;flex:1">'+mat.desc+' x'+mat.cant+'</span><button type="button" onclick="quitarMatMant('+i+')" style="background:none;border:none;color:var(--red);cursor:pointer">🗑️</button></div>').join('')}</div><button type="button" class="btn btn-sm" onclick="agregarMatMant()">➕ Agregar material</button></div>
+      <div class="fg full"><label>Material a facturar</label><input id="mt-mf" value="${m.matFacturar||''}" placeholder="Describir material a facturar al cliente"></div>
+      <div class="fg"><label>En garantía</label><select id="mt-g"><option${(m.garantia||'No')==='No'?' selected':''}>No</option><option${(m.garantia||'')==='Sí'?' selected':''}>Sí</option></select></div>
+      <div class="fg"><label>Costo mano de obra ($)</label><input id="mt-c" type="number" min="0" value="${m.costo||0}"></div>
+      <div class="fg full"><label>Observaciones</label><textarea id="mt-o" rows="2">${m.obs||''}</textarea></div>
     </div>`,()=>{
     const mo=document.getElementById('mt-mo').value.trim();
     if(!mo){alert('El motivo del llamado es obligatorio.');return false;}
-    const obj={fecha:document.getElementById('mt-f').value,tipo:document.getElementById('mt-ti').value,motivo:mo,falla:document.getElementById('mt-fa').value,reparacion:document.getElementById('mt-re').value,garantia:document.getElementById('mt-g').value,costo:document.getElementById('mt-c').value||'0',tecnico:document.getElementById('mt-te').value,obs:document.getElementById('mt-o').value};
+    const obj={
+      numero:numMant,
+      fecha:document.getElementById('mt-f').value,
+      tecnico:document.getElementById('mt-te').value,
+      tipo:document.getElementById('mt-ti').value,
+      nserie:document.getElementById('mt-ns').value,
+      garantiaVence:document.getElementById('mt-gv').value,
+      motivo:mo,
+      falla:document.getElementById('mt-fa').value,
+      reparacion:document.getElementById('mt-re').value,
+      materiales:window._mantMateriales||m.materiales||[],
+      matFacturar:document.getElementById('mt-mf').value,
+      garantia:document.getElementById('mt-g').value,
+      costo:document.getElementById('mt-c').value||'0',
+      obs:document.getElementById('mt-o').value,
+      estado:'Completado'
+    };
+    window._mantMateriales=null;
     if(idx>=0) c.mant[idx]=obj; else c.mant.unshift(obj);
     save();renderMant();return true;
   });
+  window._mantMateriales=m.materiales?JSON.parse(JSON.stringify(m.materiales)):[];
+}
+
+function agregarMatMant(){
+  var compSel=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+    return '<option value="'+c.id+'">'+c.codigo+' — '+c.desc+'</option>';
+  }).join('');
+  var cant=prompt('Cantidad:','1');
+  if(!cant) return;
+  var sel=document.createElement('select');
+  sel.innerHTML='<option value="">— seleccionar —</option>'+compSel;
+  // Use a simple approach - ask for component by showing a mini modal
+  openModal('Agregar material',
+    '<div class="fg2">'+
+      '<div class="fg full"><label>Componente</label>'+
+        '<select id="am-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          '<option value="">— seleccionar —</option>'+compSel+
+        '</select></div>'+
+      '<div class="fg"><label>Cantidad</label><input id="am-cant" type="number" min="1" value="1"></div>'+
+    '</div>',
+    function(){
+      var compId=parseInt(document.getElementById('am-comp').value)||0;
+      var cant=parseFloat(document.getElementById('am-cant').value)||0;
+      if(!compId||!cant){alert('Seleccioná un componente.');return false;}
+      var comp=DB.componentes.find(function(c){return c.id===compId;})||{};
+      if(!window._mantMateriales) window._mantMateriales=[];
+      window._mantMateriales.push({compId:compId,desc:comp.desc||'',codigo:comp.codigo||'',cant:cant,costo:comp.costo||0});
+      // Refresh the list
+      var list=document.getElementById('mt-mat-list');
+      if(list) list.innerHTML=window._mantMateriales.map(function(mat,i){
+        return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><span style="font-size:11px;flex:1">'+mat.desc+' x'+mat.cant+'</span><button type="button" onclick="quitarMatMant('+i+')" style="background:none;border:none;color:var(--red);cursor:pointer">🗑️</button></div>';
+      }).join('');
+      return true;
+    }
+  );
+}
+
+function quitarMatMant(idx){
+  if(!window._mantMateriales) return;
+  window._mantMateriales.splice(idx,1);
+  var list=document.getElementById('mt-mat-list');
+  if(list) list.innerHTML=window._mantMateriales.map(function(mat,i){
+    return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><span style="font-size:11px;flex:1">'+mat.desc+' x'+mat.cant+'</span><button type="button" onclick="quitarMatMant('+i+')" style="background:none;border:none;color:var(--red);cursor:pointer">🗑️</button></div>';
+  }).join('');
 }
 
 // =======================================================
@@ -5552,6 +5621,84 @@ function renderActas(){
       '</td>'+
     '</tr>';
   }).join('');
+}
+
+
+function getNumMant(){
+  var yr = new Date().getFullYear();
+  var all = [];
+  (DB.clientes||[]).forEach(function(c){
+    (c.mant||[]).forEach(function(m){
+      if(m.numero) all.push(m.numero);
+    });
+  });
+  var max = 0;
+  all.forEach(function(n){
+    if(n.startsWith('MNT-'+yr)){
+      var num = parseInt(n.split('-')[2]||'0');
+      if(num>max) max=num;
+    }
+  });
+  return 'MNT-'+yr+'-'+String(max+1).padStart(4,'0');
+}
+
+function exportarMant(clienteId, mantIdx){
+  var c = DB.clientes.find(function(x){return x.id===clienteId;});
+  if(!c) return;
+  var m = c.mant[mantIdx];
+  if(!m) return;
+
+  // Include catalog for material selection on mobile
+  var export_data = {
+    tipo: 'viking_mantenimiento',
+    version: '1.0',
+    registro: JSON.parse(JSON.stringify(m)),
+    clienteId: clienteId,
+    mantIdx: mantIdx,
+    catalogo: (DB.componentes||[]).map(function(comp){
+      return {id:comp.id, codigo:comp.codigo, desc:comp.desc, unidad:comp.unidad, costo:comp.costo};
+    })
+  };
+
+  var json = JSON.stringify(export_data, null, 2);
+  var blob = new Blob([json], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'mant_'+m.numero+'_'+c.nombre.replace(/[^a-zA-Z0-9]/g,'_')+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importarMant(input){
+  var file = input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var data = JSON.parse(e.target.result);
+      if(data.tipo!=='viking_mantenimiento'){
+        alert('Archivo inválido. No es un registro de mantenimiento Viking.');
+        return;
+      }
+      var c = DB.clientes.find(function(x){return x.id===data.clienteId;});
+      if(!c){alert('Cliente no encontrado en el sistema.');return;}
+      if(!c.mant) c.mant=[];
+      // Update or add
+      var existing = c.mant.findIndex(function(m){return m.numero===data.registro.numero;});
+      if(existing>=0){
+        c.mant[existing] = data.registro;
+        alert('Registro '+data.registro.numero+' actualizado en la ficha de '+c.nombre);
+      } else {
+        c.mant.unshift(data.registro);
+        alert('Registro '+data.registro.numero+' importado a la ficha de '+c.nombre);
+      }
+      save();
+    } catch(err){
+      alert('Error al leer el archivo: '+err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 // INIT
