@@ -1434,13 +1434,19 @@ function renderStock(){
   const total=DB.componentes.length;
   const criticos=DB.componentes.filter(function(c){return stockActual(c.id)<=(parseFloat(c.min)||0)&&stockActual(c.id)>=0;}).length;
   const sinStock=DB.componentes.filter(function(c){return stockActual(c.id)<=0;}).length;
-  const valorTotal=DB.componentes.reduce(function(a,c){return a+stockActual(c.id)*(parseFloat(c.precio)||0);},0);
+  var tc=parseFloat((DB.config&&DB.config.tipoCambio)||1);
+  var valorTotal=DB.componentes.reduce(function(a,c){return a+stockActual(c.id)*(parseFloat(c.costo)||0);},0);
+  var valorTotalUSD=DB.componentes.reduce(function(a,c){
+    var cu=parseFloat(c.costoUSD)||(tc>1?(parseFloat(c.costo)||0)/tc:0);
+    return a+stockActual(c.id)*cu;
+  },0);
 
   document.getElementById('stock-stats').innerHTML=
     '<div class="stat"><div class="stat-n">'+(total)+'</div><div class="stat-l">Componentes</div></div>'+
     '<div class="stat"><div class="stat-n red">'+sinStock+'</div><div class="stat-l">Sin stock</div></div>'+
     '<div class="stat"><div class="stat-n amber">'+criticos+'</div><div class="stat-l">Stock crítico</div></div>'+
-    '<div class="stat"><div class="stat-n blue">$'+Math.round(valorTotal).toLocaleString('es-AR')+'</div><div class="stat-l">Valor inventario</div></div>';
+    '<div class="stat"><div class="stat-n blue">$'+Math.round(valorTotal).toLocaleString('es-AR')+'</div><div class="stat-l">Valor inventario $</div></div>'+
+    '<div class="stat"><div class="stat-n blue">U$S '+Math.round(valorTotalUSD).toLocaleString('es-AR')+'</div><div class="stat-l">Valor inventario U$S</div></div>';
 
   const tb=document.getElementById('tbody-stock');
   if(!list.length){tb.innerHTML='<tr><td colspan="10" class="empty">Sin componentes. Cargalos desde Catálogo.</td></tr>';return;}
@@ -1456,10 +1462,7 @@ function renderStock(){
       '<td>'+(c.proveedor||'—')+'</td>'+
       '<td style="text-align:right;font-size:11px">'+(c.costo?'$'+Math.round(parseFloat(c.costo)).toLocaleString('es-AR'):'—')+'</td>'+
       '<td style="text-align:right;font-size:11px">'+(c.costoUSD?'U$S '+parseFloat(c.costoUSD).toFixed(1):(c.costo&&tc>1?'U$S '+Math.round(parseFloat(c.costo)/tc):'—'))+'</td>'+
-      '<td style="display:flex;gap:4px">'+
-        '<button class="btn btn-sm btn-p" onclick="modalMovimiento(\'Entrada\','+c.id+')" title="Entrada">📥</button>'+
-        '<button class="btn btn-sm" onclick="modalMovimiento(\'Salida manual\','+c.id+')" title="Salida">📤</button>'+
-      '</td>'+
+      '<td></td>'+
     '</tr>';
   }).join('');
 
@@ -5040,14 +5043,13 @@ function cambiarEstadoPI(id){
           c.ota.push({fecha:today(),version:c.version||'—',tipo:'Instalación inicial',tecnico:piObj.tecnico||'',obs:'Instalación completada. Pedido '+piObj.numero});
           if(piObj.tecnico&&!c.notas) c.notas='Técnico instalador: '+piObj.tecnico;
         }
-        // Warning about materials to return
+        // Ask if there are materials to return
         if(piObj){
           var matPend=(piObj.kit||[]).filter(function(m){return m.compId&&m.cant>(m.devuelto||0);});
-          if(matPend.length){
-            var warnMsg='\u26a0\ufe0f Hay '+matPend.length+' material'+(matPend.length!==1?'es':'')+' pendientes de devoluci\u00f3n al stock:\n';
+          if(matPend.length&&confirm('\u00bfHay materiales para devolver al stock?')){
+            var warnMsg='Materiales pendientes:\n\n';
             matPend.forEach(function(m){warnMsg+='\u2022 '+m.compNombre+': '+(m.cant-(m.devuelto||0))+'\n';});
-            warnMsg+='\n\u00bfDevolver todos al stock ahora?';
-            if(confirm(warnMsg)){
+            if(confirm(warnMsg+'\n\u00bfDevolver todos al stock ahora?')){
               matPend.forEach(function(m){
                 DB.movimientos.push({id:DB.nid++,compId:m.compId,fecha:today(),tipo:'Entrada',motivo:'Devoluci\u00f3n instalaci\u00f3n '+piObj.numero,ref:piObj.nserie,cant:m.cant-(m.devuelto||0),precio:0});
                 m.devuelto=m.cant;
