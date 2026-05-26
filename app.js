@@ -1352,7 +1352,7 @@ function pdfStock(){
     return(!q||(c.desc+c.codigo+(c.categoria||'')).toLowerCase().includes(q))
       &&(!fa||c.area===fa)
       &&(!fc||c.categoria===fc);
-  }).sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');});
+  }).sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');});
 
   var rows='';
   var totalVal=0;
@@ -1567,7 +1567,7 @@ function pdfCatalogo(){
   var fc=document.getElementById('cat-filter')?document.getElementById('cat-filter').value:'';
   var list=DB.componentes.filter(function(c){
     return(!q||(c.codigo+c.desc+(c.proveedor||'')).toLowerCase().includes(q))&&(!fc||c.categoria===fc);
-  }).sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');});
+  }).sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');});
 
   var rows=list.map(function(c){
     var qty=stockActual(c.id);
@@ -1768,7 +1768,7 @@ function mostrarPrecioComp(){
 }
 
 function modalMovimiento(tipo, preselCid){
-  const compOpts=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+  const compOpts=[...DB.componentes].sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');}).map(function(c){
     return '<option value="'+c.id+'"'+(preselCid===c.id?' selected':'')+'>'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
   const cliOpts=DB.clientes.filter(function(c){return c.estado==='Activo';}).map(function(c){
@@ -1904,7 +1904,7 @@ function getNumOC(){
 }
 
 function modalOrden(){
-  const compOpts=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+  const compOpts=[...DB.componentes].sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');}).map(function(c){
     return '<option value="'+c.id+'">'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
   openModal('Nueva orden de compra',
@@ -1939,7 +1939,7 @@ function modalOrden(){
 function addOrdenItem(){
   const cont=document.getElementById('orden-items');
   const idx=cont.children.length;
-  const compOpts=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+  const compOpts=[...DB.componentes].sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');}).map(function(c){
     return '<option value="'+c.id+'">'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
   const div=document.createElement('div');
@@ -3208,7 +3208,7 @@ function borrarProveedor(id){
 function modalOrdenDesdeProveedor(provId){
   var prov=DB.proveedores.find(function(p){return p.id===provId;});
   if(!prov) return;
-  var compOpts=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+  var compOpts=[...DB.componentes].sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');}).map(function(c){
     return '<option value="'+c.id+'">'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
   openModal('Nueva OC — '+prov.empresa,
@@ -3236,7 +3236,7 @@ function modalOrdenDesdeProveedor(provId){
 
 function addOrdenItemPv(){
   var cont=document.getElementById('orden-items-pv');
-  var compOpts=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+  var compOpts=[...DB.componentes].sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');}).map(function(c){
     return '<option value="'+c.id+'">'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
   var div=document.createElement('div');
@@ -3951,7 +3951,7 @@ function cerrarBusqueda(){
 function reporteStockPrecios(){
   var tc=(DB.config&&DB.config.tipoCambio)||1;
   var empresa=(DB.config&&DB.config.empresa)||'Viking Security Systems';
-  var list=DB.componentes.slice().sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');});
+  var list=DB.componentes.slice().sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');});
 
   var totalCosto=0, totalVenta=0;
   var rows=list.map(function(c){
@@ -4662,7 +4662,7 @@ function completarEtapaFab(otId, etapaId){
 function agregarMaterialExtra(otId){
   var f=DB.fabricacion.find(function(x){return x.id===otId;});
   if(!f) return;
-  var compSel=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+  var compSel=[...DB.componentes].sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');}).map(function(c){
     return '<option value="'+c.id+'">'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
 
@@ -4790,7 +4790,7 @@ function renderKit(){
 
 function modalKitItem(idx){
   var item=idx>=0?(DB.kit[idx]||{}):null;
-  var compSel=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+  var compSel=[...DB.componentes].sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');}).map(function(c){
     return '<option value="'+c.id+'"'+(item&&item.compId===c.id?' selected':'')+'>'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
 
@@ -5133,7 +5133,7 @@ function confirmarSalidaStockInst(id){
 function agregarMatInst(piId){
   var p=DB.instalaciones.find(function(x){return x.id===piId;});
   if(!p) return;
-  var compSel=[...DB.componentes].sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+  var compSel=[...DB.componentes].sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');}).map(function(c){
     return '<option value="'+c.id+'">'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
 
@@ -5196,7 +5196,7 @@ function modalKitInstEditar(){
   // Filter components with area Instalacion
   var compsInst = DB.componentes.filter(function(c){
     return c.area === 'Instalacion';
-  }).sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');});
+  }).sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');});
 
   if(!compsInst.length){
     alert('No hay componentes con área "Instalacion" en el catálogo.');
@@ -5269,7 +5269,7 @@ function modalKitInstEditar(){
 function modalKitInstItem(idx){
   // Keep for edit individual items from table
   var item=idx>=0?(DB.kitinst[idx]||{}):null;
-  var compsInst=[...DB.componentes].filter(function(c){return c.area==='Instalacion';}).sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');});
+  var compsInst=[...DB.componentes].filter(function(c){return c.area==='Instalacion';}).sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');});
   var compSel=compsInst.map(function(c){
     return '<option value="'+c.id+'"'+(item&&item.compId===c.id?' selected':'')+'>'+c.codigo+' — '+c.desc+'</option>';
   }).join('');
