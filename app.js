@@ -1750,6 +1750,23 @@ function renderMovimientos(){
   }).join('');
 }
 
+
+function mostrarPrecioComp(){
+  var el = document.getElementById('mv-precio-display');
+  if(!el) return;
+  var cid = parseInt(document.getElementById('mv-cid').value)||0;
+  if(!cid){ el.textContent='— seleccionar componente —'; return; }
+  var comp = DB.componentes.find(function(c){return c.id===cid;});
+  if(!comp){ el.textContent='—'; return; }
+  var tc = parseFloat((DB.config&&DB.config.tipoCambio)||1);
+  var pesos = comp.costo ? '$'+Math.round(parseFloat(comp.costo)).toLocaleString('es-AR') : '—';
+  var usd = comp.costoUSD ? 'U$S '+parseFloat(comp.costoUSD).toFixed(2) :
+            (comp.costo&&tc>1 ? 'U$S '+Math.round(parseFloat(comp.costo)/tc) : '—');
+  el.textContent = pesos + ' / ' + usd;
+  el.style.color = 'var(--text)';
+  el.style.fontWeight = '600';
+}
+
 function modalMovimiento(tipo, preselCid){
   const compOpts=DB.componentes.map(function(c){
     return '<option value="'+c.id+'"'+(preselCid===c.id?' selected':'')+'>'+c.codigo+' — '+c.desc+'</option>';
@@ -1790,7 +1807,9 @@ function modalMovimiento(tipo, preselCid){
         fecha:document.getElementById('mv-fecha').value
       };
       if(tipo==='Entrada'){
-        mov.precio=parseFloat(document.getElementById('mv-precio').value)||0;
+        var compCat=DB.componentes.find(function(c){return c.id===parseInt(document.getElementById('mv-cid').value);});
+        mov.precio=compCat?parseFloat(compCat.costo)||0:0;
+        mov.precioUSD=compCat?parseFloat(compCat.costoUSD)||0:0;
         mov.ref=document.getElementById('mv-ref').value;
         mov.lote=document.getElementById('mv-lote').value;
       } else if(esInstalacion){
