@@ -1778,13 +1778,13 @@ function modalMovimiento(tipo, preselCid){
   openModal(tipo,
     '<div class="fg2">'+
       '<div class="fg"><label>Componente *</label>'+
-        '<select id="mv-cid" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+        '<select id="mv-cid" onchange="mostrarPrecioComp()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
           '<option value="">— seleccionar —</option>'+compOpts+
         '</select></div>'+
       '<div class="fg"><label>Cantidad *</label><input id="mv-cant" type="number" min="1" value="1"></div>'+
       '<div class="fg"><label>Fecha</label><input id="mv-fecha" type="date" value="'+today()+'"></div>'+
       (tipo==='Entrada'?
-        '<div class="fg"><label>Precio unitario</label><input id="mv-precio" type="number" min="0" value="0"></div>'+
+        '<div class="fg"><label>Precio catálogo</label><div id="mv-precio-display" style="padding:6px 9px;font-size:12px;color:var(--text2)">— seleccionar componente —</div></div>'+
         '<div class="fg"><label>Remito / Factura ref.</label><input id="mv-ref" placeholder="Ej: FAC-00123"></div>'+
         '<div class="fg"><label>Lote / N° de serie</label><input id="mv-lote" placeholder="Opcional"></div>'
       :
