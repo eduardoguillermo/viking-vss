@@ -5801,7 +5801,7 @@ function renderMantenimientos(){
     return '<tr>'+
       '<td style="font-family:monospace;font-size:10px">'+m.numero+'</td>'+
       '<td style="font-size:11px">'+m.fecha+'</td>'+
-      '<td><strong>'+(m.clienteNombre||'—')+'</strong></td>'+
+      '<td><strong>'+(m.clienteNombre||m.cliente||'—')+'</strong></td>'+
       '<td>'+tipMantPill(m.tipo)+'</td>'+
       '<td style="font-size:11px">'+(m.motivo||'—')+'</td>'+
       '<td>'+garPill(m.garantia)+'</td>'+
@@ -5929,7 +5929,7 @@ function modalEditarMant(numero){
       m.motivo=document.getElementById('me-mo').value;
       m.falla=document.getElementById('me-fa').value;
       m.reparacion=document.getElementById('me-re').value;
-      m.matFacturar=document.getElementById('me-mf').value;
+      var mfEl=document.getElementById('me-mf'); m.matFacturar=mfEl?mfEl.value:m.matFacturar;
       m.garantia=document.getElementById('me-g').value;
       m.costo=document.getElementById('me-c').value||'0';
       m.obs=document.getElementById('me-o').value;
