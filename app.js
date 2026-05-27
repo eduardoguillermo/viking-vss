@@ -5812,12 +5812,6 @@ function renderMantenimientos(){
         if(Array.isArray(mf)&&mf.length) return '$'+Math.round(mf.reduce(function(a,x){return a+(parseFloat(x.subtotal)||0);},0)).toLocaleString('es-AR');
         return '—';
       })()+'</td>'+
-      '<td style="font-size:11px;text-align:right">'+(function(){
-        var mf=m.matFacturar;
-        if(!mf||m.garantia==='Sí') return '—';
-        if(Array.isArray(mf)&&mf.length) return '$'+Math.round(mf.reduce(function(a,x){return a+(parseFloat(x.subtotal)||0);},0)).toLocaleString('es-AR');
-        return '—';
-      })()+'</td>'+
       '<td style="font-size:11px;text-align:right">'+(m.costo&&parseFloat(m.costo)>0?'$'+Math.round(parseFloat(m.costo)).toLocaleString('es-AR'):'—')+'</td>'+
       '<td style="display:flex;gap:3px">'+
         '<button class="btn btn-sm btn-p" onclick="exportarMantNew(\''+m.numero+'\')" title="Exportar al móvil">📤</button>'+
