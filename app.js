@@ -5689,7 +5689,8 @@ function importarMant(input){
         alert('Archivo inválido. No es un registro de mantenimiento Viking.');
         return;
       }
-      var c = DB.clientes.find(function(x){return x.id===data.clienteId;});
+      var c = DB.clientes.find(function(x){return x.id===parseInt(data.clienteId)||x.id===data.clienteId;});
+      if(!c&&data.registro&&data.registro.cliente) c=DB.clientes.find(function(x){return x.nombre===data.registro.cliente;});
       if(!c){alert('Cliente no encontrado en el sistema.');return;}
       if(!c.mant) c.mant=[];
       // Update or add
