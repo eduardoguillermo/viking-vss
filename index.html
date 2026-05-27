@@ -89,6 +89,11 @@ function toggleNav(el){
   <div class="ni" id="nav-kitinst" onclick="goTo('kitinst')"><span class="ni-icon">🧰</span>Kit base instalación</div>
 
   </div>
+  <div class="ns collapsible" onclick="toggleNav(this)">🛠️ Mantenimiento ▸</div>
+  <div class="nav-section-items">
+  <div class="ni" id="nav-mantenimientos" onclick="goTo('mantenimientos')"><span class="ni-icon">📋</span>Registros</div>
+  </div>
+
   <div class="ns collapsible" onclick="toggleNav(this)">📊 Análisis ▸</div>
   <div class="nav-section-items">
   <div class="ni" id="nav-reportes" onclick="goTo('reportes')"><span class="ni-icon">📊</span>Reportes</div>
@@ -364,6 +369,38 @@ function toggleNav(el){
               <th>Fecha firma</th><th>Estado</th><th>Acciones</th>
             </tr></thead>
             <tbody id="tbody-actas"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANTENIMIENTOS -->
+    <div class="panel" id="panel-mantenimientos">
+      <div class="sbar">
+        <input type="text" id="q-mnt" placeholder="🔍 Buscar cliente, N° registro, tipo..." oninput="renderMantenimientos()">
+        <select id="mnt-tipo-filter" onchange="renderMantenimientos()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">
+          <option value="">Todos los tipos</option>
+          <option>Correctivo</option><option>Preventivo</option><option>Configuración</option>
+          <option>Actualización de firmware</option><option>Cambio de pilas</option>
+          <option>Garantía</option><option>Otro</option>
+        </select>
+        <select id="mnt-fact-filter" onchange="renderMantenimientos()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">
+          <option value="">Todos</option>
+          <option value="si">A facturar</option>
+          <option value="no">Sin facturar</option>
+        </select>
+        <button class="btn btn-p" onclick="modalNuevoMant()">➕ Nuevo</button>
+        <label class="btn" style="cursor:pointer;padding:7px 12px;font-size:12px">📥 Importar<input type="file" accept=".json" style="display:none" onchange="importarMant(this)"></label>
+      </div>
+      <div class="stats stats-4" id="mnt-stats-panel"></div>
+      <div class="card">
+        <div class="twrap">
+          <table>
+            <thead><tr>
+              <th>N°</th><th>Fecha</th><th>Cliente</th><th>Tipo</th>
+              <th>Motivo</th><th>Garantía</th><th>A facturar</th><th>MO $</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="tbody-mnt"></tbody>
           </table>
         </div>
       </div>
