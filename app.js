@@ -5947,10 +5947,13 @@ function borrarMant(numero){
 function exportarMantNew(numero){
   var m=DB.mantenimientos.find(function(x){return x.numero===numero;});
   if(!m) return;
+  // Enrich registro with all client fields for mobile display
+  var registroExp = JSON.parse(JSON.stringify(m));
+  registroExp.cliente = m.clienteNombre||'';
   var export_data={
     tipo:'viking_mantenimiento',
     version:'1.0',
-    registro:JSON.parse(JSON.stringify(m)),
+    registro:registroExp,
     clienteId:m.clienteId,
     catalogo:(DB.componentes||[]).sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
       return {id:c.id,codigo:c.codigo,desc:c.desc,unidad:c.unidad,costo:c.costo};
