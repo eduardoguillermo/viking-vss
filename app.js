@@ -5751,6 +5751,18 @@ function getNumMantNew(){
   return 'MNT-'+yr+'-'+String(max+1).padStart(4,'0');
 }
 
+
+function formatMatFacturar(matFacturar){
+  if(!matFacturar) return '—';
+  // Handle both old string format and new array format
+  if(typeof matFacturar === 'string') return matFacturar||'—';
+  if(!Array.isArray(matFacturar)||!matFacturar.length) return '—';
+  var total = matFacturar.reduce(function(a,m){return a+(parseFloat(m.subtotal)||0);},0);
+  return matFacturar.map(function(m){
+    return m.desc+' x'+m.cant+(m.costo?' ($'+Math.round(m.subtotal||0).toLocaleString('es-AR')+')':'');
+  }).join(', ')+' — Total: $'+Math.round(total).toLocaleString('es-AR');
+}
+
 function renderMantenimientos(){
   if(!DB.mantenimientos) DB.mantenimientos=[];
   var q=(document.getElementById('q-mnt')?document.getElementById('q-mnt').value||'':'').toLowerCase();
@@ -5781,9 +5793,11 @@ function renderMantenimientos(){
   if(!lista.length){tb.innerHTML='<tr><td colspan="9" class="empty">Sin registros de mantenimiento.</td></tr>';return;}
 
   tb.innerHTML=lista.map(function(m){
-    var aFact=(parseFloat(m.costo)||0)>0||(m.matFacturar&&m.matFacturar.trim());
+    var matFact=m.matFacturar;
+    var tieneMatFact=Array.isArray(matFact)?matFact.length>0:(matFact&&matFact.trim());
+    var aFact=(parseFloat(m.costo)||0)>0||tieneMatFact;
     var factBadge=m.garantia==='Sí'?'<span class="pill p-g">Garantía</span>':
-      aFact?'<span class="pill p-a">Sí</span>':'<span style="color:var(--text3);font-size:11px">—</span>';
+      tieneMatFact?'<span class="pill p-a" title="'+formatMatFacturar(matFact)+'">Sí</span>':'<span style="color:var(--text3);font-size:11px">—</span>';
     return '<tr>'+
       '<td style="font-family:monospace;font-size:10px">'+m.numero+'</td>'+
       '<td style="font-size:11px">'+m.fecha+'</td>'+
@@ -5898,7 +5912,7 @@ function modalEditarMant(numero){
       '<div class="fg full"><label>Motivo del llamado</label><input id="me-mo" value="'+(m.motivo||'')+'" placeholder="Motivo..."></div>'+
       '<div class="fg full"><label>Falla detectada</label><textarea id="me-fa" rows="2">'+(m.falla||'')+'</textarea></div>'+
       '<div class="fg full"><label>Reparación realizada</label><textarea id="me-re" rows="2">'+(m.reparacion||'')+'</textarea></div>'+
-      '<div class="fg full"><label>Material a facturar</label><input id="me-mf" value="'+(m.matFacturar||'')+'" placeholder="Material a facturar..."></div>'+
+      '<div class="fg full"><label>Material a facturar</label><div style="padding:6px 9px;background:#fff8e1;border:1px solid #ffe082;border-radius:var(--r);font-size:12px;min-height:32px">'+(formatMatFacturar(m.matFacturar))+'</div></div>'+
       '<div class="fg"><label>En garantía</label>'+
         '<select id="me-g" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
           ['No','Sí'].map(function(s){return '<option'+(s===m.garantia?' selected':'')+'>'+s+'</option>';}).join('')+
