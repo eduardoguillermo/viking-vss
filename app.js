@@ -18,6 +18,7 @@ function defData(){
     gestiones:[],
     fabricacion:[],
     instalaciones:[],
+    mantenimientos:[],
     kit:[],
     kitinst:[],
     kitVersion:1,
@@ -58,7 +59,27 @@ if(!DB.proveedores) DB.proveedores = [];
 if(!DB.gestiones) DB.gestiones = [];
 if(!DB.fabricacion) DB.fabricacion = [];
 if(!DB.instalaciones) DB.instalaciones = [];
+if(!DB.mantenimientos) DB.mantenimientos = [];
 if(!DB.kitinst) DB.kitinst = [];
+
+// Migrate c.mant[] to DB.mantenimientos[]
+(function migrarMantenimientos(){
+  var ids = {};
+  (DB.mantenimientos||[]).forEach(function(m){ if(m.numero) ids[m.numero]=true; });
+  (DB.clientes||[]).forEach(function(c){
+    (c.mant||[]).forEach(function(m){
+      if(m.numero&&ids[m.numero]) return;
+      var reg = Object.assign({},m,{
+        clienteId: c.id,
+        clienteNombre: c.nombre,
+        modelo: c.modelo||''
+      });
+      if(!reg.numero) reg.numero = 'MNT-MIGR-'+c.id+'-'+(c.mant.indexOf(m));
+      DB.mantenimientos.push(reg);
+      if(m.numero) ids[m.numero]=true;
+    });
+  });
+})();
 if(!DB.kitinstVersion) DB.kitinstVersion = 1;
 if(!DB.kitinstFecha) DB.kitinstFecha = today();
 if(!DB.kit) DB.kit = [];
@@ -87,7 +108,7 @@ function save(){ localStorage.setItem(SKEY,JSON.stringify(DB)); }
 // NAV
 // =======================================================
 let curCid=null, curSub='datos';
-const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos','fabricacion','kit','instalaciones','kitinst','actas'];
+const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos','fabricacion','kit','instalaciones','kitinst','actas','mantenimientos'];
 
 function goTo(p){
   PANELS.forEach(x=>{
@@ -96,7 +117,7 @@ function goTo(p){
     const n=document.getElementById('nav-'+x);
     if(n) n.classList.toggle('on',x===p);
   });
-  const titles={clientes:'Clientes',alta:'Alta de cliente',detalle:'Ficha de cliente',versiones:'Versiones de software',tipos:'Tipos de sensor',backup:'Backup / Restaurar',presupuestos:'Presupuestos',stock:'Stock actual',catalogo:'Catálogo de componentes',movimientos:'Movimientos de stock',ordenes:'Órdenes de compra'};
+  const titles={clientes:'Clientes',alta:'Alta de cliente',detalle:'Ficha de cliente',versiones:'Versiones de software',tipos:'Tipos de sensor',backup:'Backup / Restaurar',presupuestos:'Presupuestos',stock:'Stock actual',catalogo:'Catálogo',movimientos:'Movimientos de stock',ordenes:'Órdenes de compra',fabricacion:'Órdenes de trabajo',kit:'Kit de fabricación',instalaciones:'Pedidos de instalación',kitinst:'Kit base instalación',actas:'Actas de conformidad',mantenimientos:'Mantenimientos',fondos:'Movimiento de fondos',gestion:'Gestión económica',config:'Configuración',reportes:'Reportes',proveedores:'Proveedores'};
   document.getElementById('ptitle').textContent=titles[p]||p;
   document.getElementById('tctx').textContent='';
   const pa=document.getElementById('pacts'); pa.innerHTML='';
@@ -113,6 +134,7 @@ function goTo(p){
   if(p==='instalaciones') renderInstalaciones();
   if(p==='kitinst') renderKitInst();
   if(p==='actas') renderActas();
+  if(p==='mantenimientos') renderMantenimientos();
   if(p==='presupuestos') renderPresupuestos();
   if(p==='stock') renderStock();
   if(p==='catalogo') renderCatalogo();
@@ -5689,18 +5711,20 @@ function importarMant(input){
         alert('Archivo inválido. No es un registro de mantenimiento Viking.');
         return;
       }
-      var c = DB.clientes.find(function(x){return x.id===parseInt(data.clienteId)||x.id===data.clienteId;});
-      if(!c&&data.registro&&data.registro.cliente) c=DB.clientes.find(function(x){return x.nombre===data.registro.cliente;});
-      if(!c){alert('Cliente no encontrado en el sistema.');return;}
-      if(!c.mant) c.mant=[];
-      // Update or add
-      var existing = c.mant.findIndex(function(m){return m.numero===data.registro.numero;});
+      var reg = data.registro;
+      // Ensure clienteId is set
+      if(!reg.clienteId&&data.clienteId) reg.clienteId=parseInt(data.clienteId)||data.clienteId;
+      var c = DB.clientes.find(function(x){return x.id===parseInt(reg.clienteId)||x.id===reg.clienteId;});
+      if(!c&&reg.cliente) c=DB.clientes.find(function(x){return x.nombre===reg.cliente;});
+      if(c){ reg.clienteNombre=c.nombre; reg.clienteId=c.id; reg.modelo=reg.modelo||c.modelo||''; }
+      if(!DB.mantenimientos) DB.mantenimientos=[];
+      var existing=DB.mantenimientos.findIndex(function(m){return m.numero===reg.numero;});
       if(existing>=0){
-        c.mant[existing] = data.registro;
-        alert('Registro '+data.registro.numero+' actualizado en la ficha de '+c.nombre);
+        DB.mantenimientos[existing]=reg;
+        alert('Registro '+reg.numero+' actualizado — '+(reg.clienteNombre||'cliente desconocido'));
       } else {
-        c.mant.unshift(data.registro);
-        alert('Registro '+data.registro.numero+' importado a la ficha de '+c.nombre);
+        DB.mantenimientos.unshift(reg);
+        alert('Registro '+reg.numero+' importado — '+(reg.clienteNombre||'cliente desconocido'));
       }
       save();
     } catch(err){
@@ -5709,6 +5733,225 @@ function importarMant(input){
   };
   reader.readAsText(file);
 }
+
+
+// =======================================================
+// MANTENIMIENTOS — módulo independiente
+// =======================================================
+
+function getNumMantNew(){
+  var yr = new Date().getFullYear();
+  var max = 0;
+  (DB.mantenimientos||[]).forEach(function(m){
+    if(m.numero&&m.numero.startsWith('MNT-'+yr)){
+      var n = parseInt((m.numero||'').split('-')[2]||'0');
+      if(n>max) max=n;
+    }
+  });
+  return 'MNT-'+yr+'-'+String(max+1).padStart(4,'0');
+}
+
+function renderMantenimientos(){
+  if(!DB.mantenimientos) DB.mantenimientos=[];
+  var q=(document.getElementById('q-mnt')?document.getElementById('q-mnt').value||'':'').toLowerCase();
+  var ftipo=document.getElementById('mnt-tipo-filter')?document.getElementById('mnt-tipo-filter').value:'';
+  var ffact=document.getElementById('mnt-fact-filter')?document.getElementById('mnt-fact-filter').value:'';
+
+  var lista=DB.mantenimientos.filter(function(m){
+    var matchQ=!q||((m.numero||'')+(m.clienteNombre||'')+(m.tipo||'')+(m.motivo||'')).toLowerCase().includes(q);
+    var matchT=!ftipo||m.tipo===ftipo;
+    var aFact=(parseFloat(m.costo)||0)>0||(m.matFacturar&&m.matFacturar.trim());
+    var matchF=!ffact||(ffact==='si'&&aFact&&m.garantia!=='Sí')||(ffact==='no'&&(!aFact||m.garantia==='Sí'));
+    return matchQ&&matchT&&matchF;
+  }).sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});
+
+  var total=DB.mantenimientos.length;
+  var aFact=DB.mantenimientos.filter(function(m){return ((parseFloat(m.costo)||0)>0||(m.matFacturar&&m.matFacturar.trim()))&&m.garantia!=='Sí';}).length;
+  var gar=DB.mantenimientos.filter(function(m){return m.garantia==='Sí';}).length;
+  var moTotal=DB.mantenimientos.reduce(function(a,m){return a+(parseFloat(m.costo)||0);},0);
+
+  var el=document.getElementById('mnt-stats-panel');
+  if(el) el.innerHTML=
+    '<div class="stat"><div class="stat-n">'+total+'</div><div class="stat-l">Registros</div></div>'+
+    '<div class="stat"><div class="stat-n amber">'+aFact+'</div><div class="stat-l">A facturar</div></div>'+
+    '<div class="stat"><div class="stat-n green">'+gar+'</div><div class="stat-l">En garantía</div></div>'+
+    '<div class="stat"><div class="stat-n blue">$'+Math.round(moTotal).toLocaleString('es-AR')+'</div><div class="stat-l">MO total</div></div>';
+
+  var tb=document.getElementById('tbody-mnt');
+  if(!lista.length){tb.innerHTML='<tr><td colspan="9" class="empty">Sin registros de mantenimiento.</td></tr>';return;}
+
+  tb.innerHTML=lista.map(function(m){
+    var aFact=(parseFloat(m.costo)||0)>0||(m.matFacturar&&m.matFacturar.trim());
+    var factBadge=m.garantia==='Sí'?'<span class="pill p-g">Garantía</span>':
+      aFact?'<span class="pill p-a">Sí</span>':'<span style="color:var(--text3);font-size:11px">—</span>';
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:10px">'+m.numero+'</td>'+
+      '<td style="font-size:11px">'+m.fecha+'</td>'+
+      '<td><strong>'+(m.clienteNombre||'—')+'</strong></td>'+
+      '<td>'+tipMantPill(m.tipo)+'</td>'+
+      '<td style="font-size:11px">'+(m.motivo||'—')+'</td>'+
+      '<td>'+garPill(m.garantia)+'</td>'+
+      '<td>'+factBadge+'</td>'+
+      '<td style="font-size:11px;text-align:right">'+(m.costo&&parseFloat(m.costo)>0?'$'+Math.round(parseFloat(m.costo)).toLocaleString('es-AR'):'—')+'</td>'+
+      '<td style="display:flex;gap:3px">'+
+        '<button class="btn btn-sm btn-p" onclick="exportarMantNew(\''+m.numero+'\')" title="Exportar al móvil">📤</button>'+
+        '<button class="btn btn-sm" onclick="modalEditarMant(\''+m.numero+'\')" title="Ver/Editar">✏️</button>'+
+        '<button class="btn btn-sm" style="color:var(--red)" onclick="borrarMant(\''+m.numero+'\')" title="Eliminar">🗑️</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function modalNuevoMant(){
+  var clienteOpts=[...DB.clientes].sort(function(a,b){return (a.nombre||'').localeCompare(b.nombre||'');}).map(function(c){
+    return '<option value="'+c.id+'">'+c.nombre+' — '+(c.lote||'')+(c.barrio?' · '+c.barrio:'')+'</option>';
+  }).join('');
+  var numNuevo=getNumMantNew();
+  var tipoOpts=['Correctivo','Preventivo','Configuración','Actualización de firmware','Cambio de pilas','Garantía','Otro'];
+
+  openModal('Nuevo registro de mantenimiento',
+    '<div class="fg2">'+
+      '<div class="fg"><label>N° Registro</label><div style="padding:6px 9px;font-family:monospace;font-weight:700;color:var(--primary)">'+numNuevo+'</div></div>'+
+      '<div class="fg"><label>Fecha *</label><input id="mn-f" type="date" value="'+today()+'"></div>'+
+      '<div class="fg"><label>Técnico</label><input id="mn-te" placeholder="Nombre del técnico"></div>'+
+      '<div class="fg full"><label>Cliente *</label>'+
+        '<select id="mn-cli" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%" onchange="onChangeMantCliente()">'+
+          '<option value="">— seleccionar cliente —</option>'+clienteOpts+
+        '</select></div>'+
+      '<div class="fg"><label>N° Serie sistema</label><input id="mn-ns" placeholder="VSS-K2605-02-001"></div>'+
+      '<div class="fg"><label>Tipo *</label>'+
+        '<select id="mn-ti" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          tipoOpts.map(function(t){return '<option>'+t+'</option>';}).join('')+
+        '</select></div>'+
+      '<div class="fg"><label>Garantía válida hasta</label><input id="mn-gv" type="date"></div>'+
+      '<div class="fg full"><label>Motivo del llamado *</label><input id="mn-mo" placeholder="Ej: Sirena no activa, falsa alarma..."></div>'+
+      '<div class="fg full"><label>Falla detectada</label><textarea id="mn-fa" rows="2" placeholder="Describir la falla..."></textarea></div>'+
+      '<div class="fg full"><label>Reparación realizada</label><textarea id="mn-re" rows="2" placeholder="Describir lo realizado..."></textarea></div>'+
+      '<div class="fg full"><label>Material a facturar</label><input id="mn-mf" placeholder="Material a facturar al cliente"></div>'+
+      '<div class="fg"><label>En garantía</label>'+
+        '<select id="mn-g" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          '<option>No</option><option>Sí</option>'+
+        '</select></div>'+
+      '<div class="fg"><label>Mano de obra ($)</label><input id="mn-c" type="number" min="0" value="0"></div>'+
+      '<div class="fg full"><label>Observaciones</label><textarea id="mn-o" rows="2" placeholder="Notas adicionales..."></textarea></div>'+
+    '</div>',
+    function(){
+      var cliId=parseInt(document.getElementById('mn-cli').value)||0;
+      var mo=document.getElementById('mn-mo').value.trim();
+      if(!cliId){alert('Seleccioná un cliente.');return false;}
+      if(!mo){alert('El motivo del llamado es obligatorio.');return false;}
+      var c=DB.clientes.find(function(x){return x.id===cliId;})||{};
+      var reg={
+        numero:numNuevo,
+        fecha:document.getElementById('mn-f').value,
+        tecnico:document.getElementById('mn-te').value,
+        clienteId:cliId,
+        clienteNombre:c.nombre||'',
+        modelo:c.modelo||'',
+        nserie:document.getElementById('mn-ns').value,
+        tipo:document.getElementById('mn-ti').value,
+        garantiaVence:document.getElementById('mn-gv').value,
+        motivo:mo,
+        falla:document.getElementById('mn-fa').value,
+        reparacion:document.getElementById('mn-re').value,
+        materiales:[],
+        matFacturar:document.getElementById('mn-mf').value,
+        garantia:document.getElementById('mn-g').value,
+        costo:document.getElementById('mn-c').value||'0',
+        obs:document.getElementById('mn-o').value,
+        estado:'Pendiente'
+      };
+      if(!DB.mantenimientos) DB.mantenimientos=[];
+      DB.mantenimientos.unshift(reg);
+      save(); renderMantenimientos(); return true;
+    }
+  );
+}
+
+function onChangeMantCliente(){
+  var cliId=parseInt(document.getElementById('mn-cli').value)||0;
+  if(!cliId) return;
+  var c=DB.clientes.find(function(x){return x.id===cliId;});
+  if(!c) return;
+  var ns=document.getElementById('mn-ns');
+  var gv=document.getElementById('mn-gv');
+  if(ns&&!ns.value) ns.value=c.mac||'';
+  if(gv&&!gv.value&&c.actaGarantiaVence) gv.value=c.actaGarantiaVence;
+}
+
+function modalEditarMant(numero){
+  var m=DB.mantenimientos.find(function(x){return x.numero===numero;});
+  if(!m) return;
+  var tipoOpts=['Correctivo','Preventivo','Configuración','Actualización de firmware','Cambio de pilas','Garantía','Otro'];
+
+  openModal('Registro '+m.numero+' — '+(m.clienteNombre||''),
+    '<div class="fg2">'+
+      '<div class="fg"><label>Cliente</label><div style="padding:6px 9px;font-size:12px;font-weight:700">'+(m.clienteNombre||'—')+'</div></div>'+
+      '<div class="fg"><label>Fecha</label><input id="me-f" type="date" value="'+(m.fecha||today())+'"></div>'+
+      '<div class="fg"><label>Técnico</label><input id="me-te" value="'+(m.tecnico||'')+'" placeholder="Nombre del técnico"></div>'+
+      '<div class="fg"><label>N° Serie sistema</label><input id="me-ns" value="'+(m.nserie||'')+'" placeholder="VSS-K2605-02-001"></div>'+
+      '<div class="fg"><label>Tipo</label>'+
+        '<select id="me-ti" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          tipoOpts.map(function(t){return '<option'+(t===m.tipo?' selected':'')+'>'+t+'</option>';}).join('')+
+        '</select></div>'+
+      '<div class="fg"><label>Garantía válida hasta</label><input id="me-gv" type="date" value="'+(m.garantiaVence||'')+'"></div>'+
+      '<div class="fg full"><label>Motivo del llamado</label><input id="me-mo" value="'+(m.motivo||'')+'" placeholder="Motivo..."></div>'+
+      '<div class="fg full"><label>Falla detectada</label><textarea id="me-fa" rows="2">'+(m.falla||'')+'</textarea></div>'+
+      '<div class="fg full"><label>Reparación realizada</label><textarea id="me-re" rows="2">'+(m.reparacion||'')+'</textarea></div>'+
+      '<div class="fg full"><label>Material a facturar</label><input id="me-mf" value="'+(m.matFacturar||'')+'" placeholder="Material a facturar..."></div>'+
+      '<div class="fg"><label>En garantía</label>'+
+        '<select id="me-g" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          ['No','Sí'].map(function(s){return '<option'+(s===m.garantia?' selected':'')+'>'+s+'</option>';}).join('')+
+        '</select></div>'+
+      '<div class="fg"><label>Mano de obra ($)</label><input id="me-c" type="number" min="0" value="'+(m.costo||0)+'"></div>'+
+      '<div class="fg full"><label>Observaciones</label><textarea id="me-o" rows="2">'+(m.obs||'')+'</textarea></div>'+
+    '</div>',
+    function(){
+      m.fecha=document.getElementById('me-f').value;
+      m.tecnico=document.getElementById('me-te').value;
+      m.nserie=document.getElementById('me-ns').value;
+      m.tipo=document.getElementById('me-ti').value;
+      m.garantiaVence=document.getElementById('me-gv').value;
+      m.motivo=document.getElementById('me-mo').value;
+      m.falla=document.getElementById('me-fa').value;
+      m.reparacion=document.getElementById('me-re').value;
+      m.matFacturar=document.getElementById('me-mf').value;
+      m.garantia=document.getElementById('me-g').value;
+      m.costo=document.getElementById('me-c').value||'0';
+      m.obs=document.getElementById('me-o').value;
+      save(); renderMantenimientos(); return true;
+    }
+  );
+}
+
+function borrarMant(numero){
+  if(!confirm('¿Eliminar el registro '+numero+'? Esta acción no se puede deshacer.')) return;
+  DB.mantenimientos=DB.mantenimientos.filter(function(m){return m.numero!==numero;});
+  save(); renderMantenimientos();
+}
+
+function exportarMantNew(numero){
+  var m=DB.mantenimientos.find(function(x){return x.numero===numero;});
+  if(!m) return;
+  var export_data={
+    tipo:'viking_mantenimiento',
+    version:'1.0',
+    registro:JSON.parse(JSON.stringify(m)),
+    clienteId:m.clienteId,
+    catalogo:(DB.componentes||[]).sort(function(a,b){return (a.desc||'').localeCompare(b.desc||'');}).map(function(c){
+      return {id:c.id,codigo:c.codigo,desc:c.desc,unidad:c.unidad,costo:c.costo};
+    })
+  };
+  var json=JSON.stringify(export_data,null,2);
+  var blob=new Blob([json],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='mant_'+m.numero+'_'+(m.clienteNombre||'').replace(/[^a-zA-Z0-9]/g,'_')+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 
 // INIT
 // =======================================================
