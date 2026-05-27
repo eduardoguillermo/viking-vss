@@ -389,10 +389,8 @@ function toggleNav(el){
           <option value="si">A facturar</option>
           <option value="no">Sin facturar</option>
         </select>
-      </div>
-      <div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)">
-        <button class="btn btn-p" onclick="modalNuevoMant()" style="width:auto;padding:7px 16px">➕ Nuevo registro</button>
-        <label class="btn btn-s" style="cursor:pointer;width:auto;padding:7px 16px">📥 Importar desde móvil<input type="file" accept=".json" style="display:none" onchange="importarMant(this)"></label>
+        <button class="btn btn-p" onclick="modalNuevoMant()">➕ Nuevo</button>
+        <label class="btn btn-p" style="cursor:pointer">📥 Importar<input type="file" accept=".json" style="display:none" onchange="importarMant(this)"></label>
       </div>
       <div class="stats stats-4" id="mnt-stats-panel"></div>
       <div class="card">
@@ -400,7 +398,7 @@ function toggleNav(el){
           <table>
             <thead><tr>
               <th>N°</th><th>Fecha</th><th>Cliente</th><th>Tipo</th>
-              <th>Motivo</th><th>Garantía</th><th>A facturar</th><th>MO $</th><th>Acciones</th>
+              <th>Motivo</th><th>Garantía</th><th>A facturar</th><th>Mat. $</th><th>MO $</th><th>Acciones</th>
             </tr></thead>
             <tbody id="tbody-mnt"></tbody>
           </table>
