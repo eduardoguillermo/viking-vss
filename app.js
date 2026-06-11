@@ -1612,6 +1612,11 @@ function renderCatalogo(){
   });
 
   const tb=document.getElementById('tbody-cat');
+  var catCount=document.getElementById('cat-count');
+  if(catCount){
+    var total=DB.componentes.length;
+    catCount.textContent=list.length===total?total+' ítems':list.length+' de '+total+' ítems';
+  }
   if(!list.length){tb.innerHTML='<tr><td colspan="11" class="empty">Sin componentes registrados.</td></tr>';return;}
 
   tb.innerHTML=list.map(function(c){
