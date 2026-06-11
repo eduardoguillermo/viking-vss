@@ -1780,6 +1780,8 @@ function modalComponente(id){
           '<option value="N"'+(c&&c.estadoMat==='N'?' selected':(!c?' selected':''))+'>N — Nuevo</option>'+
           '<option value="R"'+(c&&c.estadoMat==='R'?' selected':'')+'>R — Recuperado</option>'+
         '</select></div>'+
+      '<div class="fg full" style="grid-column:1/-1"><label>Notas</label>'+
+        '<textarea id="cp-notas" rows="3" placeholder="Observaciones, compatibilidad, instrucciones de uso..." style="width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;resize:vertical;font-family:inherit;box-sizing:border-box">'+(c?c.notas||'':'')+'</textarea></div>'+
       (!c?'<div class="fg full" style="grid-column:1/-1"><hr style="border:none;border-top:1px solid var(--border);margin:4px 0"></div>'+
         '<div class="fg full"><div class="sectitle" style="margin:0 0 6px">Stock inicial</div></div>'+
         '<div class="fg"><label>Cantidad</label><input id="cp-stock-ini" type="number" min="0" value="0"></div>'+
@@ -1803,6 +1805,7 @@ function modalComponente(id){
         c.proveedor=document.getElementById('cp-prov').value;
         c.ubicacion=document.getElementById('cp-ubic').value;
         c.estadoMat=document.getElementById('cp-emat')?document.getElementById('cp-emat').value:'N';
+        c.notas=document.getElementById('cp-notas')?document.getElementById('cp-notas').value.trim():'';
       } else {
         var newCosto=parseFloat(document.getElementById('cp-costo')?document.getElementById('cp-costo').value:0)||0;
         var newId=DB.nid++;
@@ -1818,7 +1821,8 @@ function modalComponente(id){
           area:document.getElementById('cp-area')?document.getElementById('cp-area').value:'Fábrica',
           proveedor:document.getElementById('cp-prov')?document.getElementById('cp-prov').value:'',
           ubicacion:document.getElementById('cp-ubic')?document.getElementById('cp-ubic').value:'',
-          estadoMat:document.getElementById('cp-emat')?document.getElementById('cp-emat').value:'N'
+          estadoMat:document.getElementById('cp-emat')?document.getElementById('cp-emat').value:'N',
+          notas:document.getElementById('cp-notas')?document.getElementById('cp-notas').value.trim():''
         });
         var stockIni=parseFloat(document.getElementById('cp-stock-ini')?document.getElementById('cp-stock-ini').value:0)||0;
         if(stockIni>0){
