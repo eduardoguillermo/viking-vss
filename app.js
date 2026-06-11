@@ -1574,7 +1574,7 @@ function renderStock(){
 }
 
 // CAT=LOGO ============================================
-var _catSort = {col:'desc', dir:1};
+var _catSort = {col:'codigo', dir:1};
 
 function fillProvFilter(){
   var sel = document.getElementById('cat-prov-filter');
