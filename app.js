@@ -1823,10 +1823,16 @@ function renderMovimientos(){
   const list=DB.movimientos.filter(function(m){
     const comp=DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{desc:'—',codigo:'',unidad:''};
     return(!q||(comp.desc+comp.codigo+(m.ref||'')+(m.nota||'')).toLowerCase().includes(q))&&(!ft||m.tipo===ft);
-  }).sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+  }).sort(function(a,b){
+    var ca=DB.componentes.find(function(c){return c.id===(a.cid||a.compId);})||{};
+    var cb=DB.componentes.find(function(c){return c.id===(b.cid||b.compId);})||{};
+    var sa=(ca.codigo||'').toLowerCase(); var sb=(cb.codigo||'').toLowerCase();
+    if(sa!==sb) return sa.localeCompare(sb);
+    return b.fecha.localeCompare(a.fecha);
+  });
 
   const tb=document.getElementById('tbody-mov');
-  if(!list.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin movimientos registrados.</td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="9" class="empty">Sin movimientos registrados.</td></tr>';return;}
   const tc=(DB.config&&DB.config.tipoCambio)||1;
   tb.innerHTML=list.map(function(m){
     const comp=DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{desc:'—',codigo:'—',unidad:''};
@@ -1835,13 +1841,13 @@ function renderMovimientos(){
     return '<tr>'+
       '<td>'+m.fecha+'</td>'+
       '<td>'+movTipoPill(m.tipo)+'</td>'+
-      '<td>'+comp.desc+'<div style="font-size:10px;color:var(--text3)">'+comp.codigo+'</div></td>'+
+      '<td style="font-family:monospace;font-size:11px">'+comp.codigo+'</td>'+
+      '<td>'+comp.desc+'</td>'+
       '<td style="font-weight:600">'+(m.tipo==='Entrada'?'+':'-')+(m.cant||0)+' '+comp.unidad+'</td>'+
       '<td>'+(m.precio?'$'+parseFloat(m.precio).toLocaleString('es-AR'):'—')+'</td>'+
       '<td>'+precioUSD+'</td>'+
       '<td>'+(m.ref||'—')+'</td>'+
       '<td>'+(cli?cli.nombre:(m.nota||'—'))+'</td>'+
-      '<td style="font-family:monospace;font-size:10px">'+(m.lote||'—')+'</td>'+
       '<td style="display:flex;gap:3px"><button class="btn btn-sm" onclick="editarMovimiento('+m.id+')">✏️</button>'+
       '<button class="btn btn-sm" style="color:var(--red)" onclick="borrarMovimiento('+m.id+')">🗑️</button></td>'+
     '</tr>';
@@ -1929,7 +1935,13 @@ function renderOrdenes(){
   var q=(document.getElementById('q-ord')?document.getElementById('q-ord').value||'':'').toLowerCase();
   const list=[...DB.ordenes].filter(function(o){
     return !q||((o.numero||'')+(o.proveedor||'')).toLowerCase().includes(q);
-  }).sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+  }).sort(function(a,b){
+    var ca=DB.componentes.find(function(c){return c.id===(a.cid||a.compId);})||{};
+    var cb=DB.componentes.find(function(c){return c.id===(b.cid||b.compId);})||{};
+    var sa=(ca.codigo||'').toLowerCase(); var sb=(cb.codigo||'').toLowerCase();
+    if(sa!==sb) return sa.localeCompare(sb);
+    return b.fecha.localeCompare(a.fecha);
+  });
   tb.innerHTML=list.map(function(o){
     const estPill={'Pendiente':'p-a',Enviada:'p-b',Recibida:'p-g',Cancelada:'p-r'};
     const items=o.items.map(function(i){
