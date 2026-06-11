@@ -2202,6 +2202,36 @@ function resetearContadores(){
   alert('Contadores reiniciados correctamente.');
 }
 
+
+function actualizarTC(){
+  var btn = document.querySelector('[onclick="actualizarTC()"]');
+  var info = document.getElementById('cfg-tc-info');
+  if(btn) btn.textContent = '⏳';
+  if(info) info.textContent = 'Consultando...';
+  
+  fetch('https://dolarapi.com/v1/dolares/oficial')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data && data.venta){
+        var venta = Math.round(data.venta);
+        var el = document.getElementById('cfg-tc');
+        if(el) el.value = venta;
+        if(btn) btn.textContent = '✅';
+        var fecha = data.fechaActualizacion ? new Date(data.fechaActualizacion).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+        if(info) info.textContent = 'Venta BNA: $'+venta.toLocaleString('es-AR')+(fecha?' · '+fecha:'');
+        saveConfig();
+        setTimeout(function(){ if(btn) btn.textContent = '🔄 BNA'; }, 3000);
+      } else {
+        throw new Error('Sin datos');
+      }
+    })
+    .catch(function(err){
+      if(btn) btn.textContent = '🔄 BNA';
+      if(info) info.textContent = 'Error al consultar. Ingresá manualmente.';
+      console.error('TC fetch error:', err);
+    });
+}
+
 function renderConfig(){
   var cfg = DB.config || {};
   var el = document.getElementById('config-body');
@@ -2214,8 +2244,7 @@ function renderConfig(){
   h += cfgInp('Dirección','cfg-direccion', cfg.direccion||'', 'Calle y número, ciudad');
   h += cfgInp('Sitio web','cfg-web', cfg.web||'', 'www.empresa.com');
   h += cfgInp('Firma en emails','cfg-firma', cfg.firma||cfg.empresa||'', 'Firma para emails');
-  h += cfgInp('Tipo de cambio U$S (referencia)','cfg-tipoCambio', cfg.tipoCambio||'1', '1300');
-  h += cfgInp('Tipo de cambio U$S','cfg-tc', cfg.tipoCambio||1, '1', 'number');
+  h += '<div class="fg"><label>Tipo de cambio U$S — vendedor BNA</label><div style="display:flex;gap:6px;align-items:center"><input id="cfg-tc" type="number" min="1" value="'+(cfg.tipoCambio||1)+'" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;flex:1" onblur="saveConfig()"><button class="btn btn-sm" onclick="actualizarTC()" title="Obtener cotización actual del Banco Nación">🔄 BNA</button><span id="cfg-tc-info" style="font-size:10px;color:var(--text2)"></span></div></div>';
   h += '</div>';
   h += '<hr class="div"><div class="sectitle" style="margin-bottom:10px">Meta de facturación mensual</div>';
   h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
@@ -2256,7 +2285,6 @@ function saveConfig(){
   DB.config.direccion = g('cfg-direccion');
   DB.config.web = g('cfg-web');
   DB.config.firma = g('cfg-firma');
-  DB.config.tipoCambio = parseFloat(g('cfg-tipoCambio'))||1;
   DB.config.metaMensual = parseFloat((g('cfg-meta-mensual')||'0').replace(/\./g,'').replace(',','.'))||0;
   DB.config.tipoCambio = parseFloat(g('cfg-tc'))||1;
   DB.config.desc_Base = g('cfg-desc-Base');
