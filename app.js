@@ -613,7 +613,7 @@ function renderZigbee(){
 function modalZigbee(idx=-1){
   const c=gc();
   const d=idx>=0?c.zigbee[idx]:{};
-  const tipos=DB.tipos.map(t=>`<option${(d.tipo||'')==t?' selected':''}>${t}</option>`).join('');
+  const tipos=[...DB.tipos].sort((a,b)=>(a||'').localeCompare(b||'')).map(t=>`<option${(d.tipo||'')==t?' selected':''}>${t}</option>`).join('');
   openModal(idx>=0?'Editar dispositivo Zigbee':'Agregar dispositivo Zigbee',`
     <div class="fg3">
       <div class="fg"><label>Tipo *</label><select id="z-t">${tipos}</select></div>
@@ -664,7 +664,7 @@ function renderOTA(){
 function modalOTA(idx){
   const c=gc();
   const o=idx>=0?c.ota[idx]:{};
-  const vers=DB.versiones.map(v=>`<option${(o.vnueva||'')==v.ver?' selected':''}>${v.ver}</option>`).join('');
+  const vers=[...versiones].sort((a,b)=>(a.ver||'').localeCompare(b.ver||'')).map(v=>`<option${(o.vnueva||'')==v.ver?' selected':''}>${v.ver}</option>`).join('');
   openModal(idx>=0?'Editar actualización OTA':'Registrar actualización OTA',`
     <div class="fg2">
       <div class="fg"><label>Fecha *</label><input id="ot-f" type="date" value="${o.fecha||today()}"></div>
@@ -1759,7 +1759,7 @@ function modalComponente(id){
       '<div class="fg"><label>Venta ($)</label><input id="cp-venta" type="number" min="0" value="'+(c?c.venta||0:0)+'" oninput="calcPreciosVentaComp()"></div>'+
       '<div class="fg"><label>Venta (U$S)</label><input id="cp-venta-usd" type="number" min="0" step="0.01" value="'+(c&&(DB.config&&DB.config.tipoCambio)?((c.venta||0)/(DB.config.tipoCambio||1)).toFixed(2):0)+'" oninput="calcPreciosVentaCompUSD()"></div>'+
       '<div class="fg"><label>Proveedor</label><input id="cp-prov" value="'+(c?c.proveedor||'':'')+'" placeholder="Nombre del proveedor" list="dl-cp-prov">'+
-      '<datalist id="dl-cp-prov">'+(DB.proveedores.map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join(''))+'</datalist></div>'+
+      '<datalist id="dl-cp-prov">'+([...DB.proveedores].sort(function(a,b){return (a.empresa||'').localeCompare(b.empresa||'');}).map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join(''))+'</datalist></div>'+
       '<div class="fg"><label>Área *</label>'+
         '<select id="cp-area" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
           ['Fábrica','Mantenimiento','Instalacion'].map(function(a){return '<option'+(c&&c.area===a?' selected':'')+'>'+a+'</option>';}).join('')+
@@ -2016,7 +2016,7 @@ function modalOrden(){
     '<div class="fg"><label>Proveedor</label>'+
       '<select id="ord-prov" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
         '<option value="">— sin vincular —</option>'+
-        DB.proveedores.map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join('')+
+        [...DB.proveedores].sort(function(a,b){return (a.empresa||'').localeCompare(b.empresa||'');}).map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join('')+
       '</select></div>'+
     '<div class="fg"><label>Observaciones</label><input id="ord-obs" placeholder="Notas..."></div>',
     function(){
@@ -2903,7 +2903,7 @@ function reporteMantenimientos(){
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Tipo</label>'+
       '<select id="rm-tipo" onchange="reporteMantenimientos()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
-        '<option value="">Todos</option>'+tipos.map(function(t){return '<option'+(t===fTipo?' selected':'')+'>'+t+'</option>';}).join('')+
+        '<option value="">Todos</option>'+[...tipos].sort(function(a,b){return (a||'').localeCompare(b||'');}).map(function(t){return '<option'+(t===fTipo?' selected':'')+'>'+t+'</option>';}).join('')+
       '</select></div>'+
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Motivo</label>'+
       '<input id="rm-motivo" value="'+fMotivo+'" placeholder="Filtrar motivo..." onchange="reporteMantenimientos()" '+
@@ -3885,7 +3885,7 @@ function modalFondo(id){
       '<select id="fo-vinculo" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
         '<option value="">— sin vincular —</option>'+
         '<optgroup label="Clientes">'+DB.clientes.filter(function(c){return c.estado==='Activo';}).map(function(c){return '<option value="cli:'+c.id+'"'+(f&&f.vinculo==='cli:'+c.id?' selected':'')+'>'+c.nombre+'</option>';}).join('')+'</optgroup>'+
-        '<optgroup label="Proveedores">'+DB.proveedores.map(function(p){return '<option value="prov:'+p.id+'"'+(f&&f.vinculo==='prov:'+p.id?' selected':'')+'>'+p.empresa+'</option>';}).join('')+'</optgroup>'+
+        '<optgroup label="Proveedores">'+[...DB.proveedores].sort(function(a,b){return (a.empresa||'').localeCompare(b.empresa||'');}).map(function(p){return '<option value="prov:'+p.id+'"'+(f&&f.vinculo==='prov:'+p.id?' selected':'')+'>'+p.empresa+'</option>';}).join('')+'</optgroup>'+
       '</select></div>'+
     '</div>',
     function(){
