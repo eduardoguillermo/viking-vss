@@ -1558,6 +1558,7 @@ function renderStock(){
       '<td>'+(c.min||0)+' '+c.unidad+'</td>'+
       '<td>'+(c.ubicacion||'—')+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
+      '<td>'+(c.area||'—')+'</td>'+
       '<td style="text-align:right;font-size:11px">'+(c.costo?'$'+Math.round(parseFloat(c.costo)).toLocaleString('es-AR'):'—')+'</td>'+
       '<td style="text-align:right;font-size:11px">'+((c.costo_usd||c.costoUSD)?'U$S '+parseFloat(c.costo_usd||c.costoUSD).toFixed(1):(c.costo&&tc>1?'U$S '+Math.round(parseFloat(c.costo)/tc):'—'))+'</td>'+
       '<td></td>'+
