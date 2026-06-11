@@ -2220,17 +2220,17 @@ function actualizarTC(){
   var info = document.getElementById('cfg-tc-info');
   if(btn) btn.textContent = '⏳';
   if(info) info.textContent = 'Consultando...';
-  
-  fetch('https://dolarapi.com/v1/dolares/oficial')
+
+  fetch('https://api.bluelytics.com.ar/v2/latest')
     .then(function(r){ return r.json(); })
     .then(function(data){
-      if(data && data.venta){
-        var venta = Math.round(data.venta);
+      if(data && data.oficial && data.oficial.value_sell){
+        var venta = Math.round(data.oficial.value_sell);
         var el = document.getElementById('cfg-tc');
         if(el) el.value = venta;
         if(btn) btn.textContent = '✅';
-        var fecha = data.fechaActualizacion ? new Date(data.fechaActualizacion).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-        if(info) info.textContent = 'Venta BNA: $'+venta.toLocaleString('es-AR')+(fecha?' · '+fecha:'');
+        var fecha = data.last_update ? new Date(data.last_update).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+        if(info) info.textContent = 'Venta oficial: $'+venta.toLocaleString('es-AR')+(fecha?' · '+fecha:'');
         saveConfig();
         setTimeout(function(){ if(btn) btn.textContent = '🔄 BNA'; }, 3000);
       } else {
