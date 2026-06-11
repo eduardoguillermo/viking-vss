@@ -456,7 +456,7 @@ function toggleNav(el){
         </div>
         <div class="twrap">
           <table>
-            <colgroup><col style="width:8%"><col style="width:22%"><col style="width:10%"><col style="width:7%"><col style="width:7%"><col style="width:10%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:2%"></colgroup>
+            <colgroup><col style="width:8%"><col style="width:19%"><col style="width:9%"><col style="width:7%"><col style="width:6%"><col style="width:9%"><col style="width:8%"><col style="width:7%"><col style="width:5%"><col style="width:7%"><col style="width:7%"><col style="width:2%"></colgroup>
             <thead><tr>
               <th id="sth-codigo" onclick="sortStock('codigo')" style="cursor:pointer;user-select:none">Código</th>
               <th id="sth-desc" onclick="sortStock('desc')" style="cursor:pointer;user-select:none">Descripción ▲</th>
@@ -466,6 +466,7 @@ function toggleNav(el){
               <th id="sth-ubicacion" onclick="sortStock('ubicacion')" style="cursor:pointer;user-select:none">Ubicación</th>
               <th>Proveedor</th>
               <th id="sth-area" onclick="sortStock('area')" style="cursor:pointer;user-select:none">Área</th>
+              <th style="text-align:center">Estado</th>
               <th style="text-align:right">Costo $</th>
               <th style="text-align:right">Costo U$S</th>
               <th>Acciones</th>
@@ -492,7 +493,7 @@ function toggleNav(el){
       <div class="card">
         <div class="twrap">
           <table>
-            <colgroup><col style="width:7%"><col style="width:18%"><col style="width:10%"><col style="width:6%"><col style="width:5%"><col style="width:7%"><col style="width:8%"><col style="width:9%"><col style="width:11%"><col style="width:11%"></colgroup>
+            <colgroup><col style="width:7%"><col style="width:17%"><col style="width:10%"><col style="width:6%"><col style="width:5%"><col style="width:7%"><col style="width:8%"><col style="width:8%"><col style="width:10%"><col style="width:5%"><col style="width:9%"></colgroup>
             <thead id="thead-cat"><tr>
               <th id="th-codigo" onclick="sortCatalogo('codigo')" style="cursor:pointer;user-select:none">Código</th>
               <th id="th-desc" onclick="sortCatalogo('desc')" style="cursor:pointer;user-select:none">Descripción ▲</th>
@@ -500,7 +501,7 @@ function toggleNav(el){
               <th>Unidad</th><th>Mín.</th>
               <th id="th-stock" onclick="sortCatalogo('stock')" style="cursor:pointer;user-select:none">Stock</th>
               <th id="th-area" onclick="sortCatalogo('area')" style="cursor:pointer;user-select:none">Área</th>
-              <th>Ubicación</th><th>Proveedor</th><th>Acciones</th>
+              <th>Ubicación</th><th>Proveedor</th><th style="text-align:center">Estado</th><th>Acciones</th>
             </tr></thead>
             <tbody id="tbody-cat"></tbody>
           </table>

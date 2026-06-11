@@ -1547,9 +1547,10 @@ function renderStock(){
     '<div class="stat"><div class="stat-n blue">U$S '+Math.round(valorTotalUSD).toLocaleString('es-AR')+'</div><div class="stat-l">Valor inventario U$S</div></div>';
 
   const tb=document.getElementById('tbody-stock');
-  if(!list.length){tb.innerHTML='<tr><td colspan="10" class="empty">Sin componentes. Cargalos desde Catálogo.</td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="12" class="empty">Sin componentes. Cargalos desde Catálogo.</td></tr>';return;}
   tb.innerHTML=list.map(function(c){
     const cant=stockActual(c.id);
+    var eMat=c.estadoMat==='R'?'<span class="pill p-a" title="Recuperado">R</span>':'<span class="pill p-g" title="Nuevo">N</span>';
     return '<tr>'+
       '<td style="font-family:monospace;font-size:11px">'+c.codigo+'</td>'+
       '<td><strong>'+c.desc+'</strong></td>'+
@@ -1558,6 +1559,8 @@ function renderStock(){
       '<td>'+(c.min||0)+' '+c.unidad+'</td>'+
       '<td>'+(c.ubicacion||'—')+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
+      '<td>'+(c.area||'—')+'</td>'+
+      '<td style="text-align:center">'+eMat+'</td>'+
       '<td style="text-align:right;font-size:11px">'+(c.costo?'$'+Math.round(parseFloat(c.costo)).toLocaleString('es-AR'):'—')+'</td>'+
       '<td style="text-align:right;font-size:11px">'+((c.costo_usd||c.costoUSD)?'U$S '+parseFloat(c.costo_usd||c.costoUSD).toFixed(1):(c.costo&&tc>1?'U$S '+Math.round(parseFloat(c.costo)/tc):'—'))+'</td>'+
       '<td></td>'+
@@ -1609,7 +1612,7 @@ function renderCatalogo(){
   });
 
   const tb=document.getElementById('tbody-cat');
-  if(!list.length){tb.innerHTML='<tr><td colspan="9" class="empty">Sin componentes registrados.</td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="11" class="empty">Sin componentes registrados.</td></tr>';return;}
 
   tb.innerHTML=list.map(function(c){
     var qty=stockActual(c.id);
@@ -1626,6 +1629,7 @@ function renderCatalogo(){
       '<td><span class="pill '+(c.area==='Mantenimiento'?'p-b':c.area==='Instalacion'?'p-a':c.area==='Ambas'?'p-p':'p-g')+'">'+(c.area||'Fábrica')+'</span></td>'+
       '<td>'+(c.ubicacion||'—')+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
+      '<td style="text-align:center">'+(c.estadoMat==='R'?'<span class="pill p-a" title="Recuperado">R</span>':'<span class="pill p-g" title="Nuevo">N</span>')+'</td>'+
       '<td style="display:flex;gap:3px">'+
         '<button class="btn btn-sm" onclick="modalComponente('+c.id+')" title="Editar">✏️</button>'+
         '<button class="btn btn-sm" onclick="duplicarComponente('+c.id+')" title="Duplicar">📋</button>'+
@@ -1766,6 +1770,11 @@ function modalComponente(id){
         '</select></div>'+
       '<div class="fg"><label>Ubicación</label><input id="cp-ubic" value="'+(c?c.ubicacion||'':'')+'" placeholder="Ej: Estante A, cajón 3" list="dl-cp-ubic">'+
       '<datalist id="dl-cp-ubic">'+(function(){var u=[...new Set(DB.componentes.filter(function(x){return x.ubicacion;}).map(function(x){return x.ubicacion;}))];return u.map(function(u){return '<option value="'+u+'">'+u+'</option>';}).join('');})()+'</datalist></div>'+
+      '<div class="fg"><label>Estado material</label>'+
+        '<select id="cp-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+          '<option value="N"'+(c&&c.estadoMat==='N'?' selected':(!c?' selected':''))+'>N — Nuevo</option>'+
+          '<option value="R"'+(c&&c.estadoMat==='R'?' selected':'')+'>R — Recuperado</option>'+
+        '</select></div>'+
       (!c?'<div class="fg full" style="grid-column:1/-1"><hr style="border:none;border-top:1px solid var(--border);margin:4px 0"></div>'+
         '<div class="fg full"><div class="sectitle" style="margin:0 0 6px">Stock inicial</div></div>'+
         '<div class="fg"><label>Cantidad</label><input id="cp-stock-ini" type="number" min="0" value="0"></div>'+
@@ -1788,6 +1797,7 @@ function modalComponente(id){
         c.area=document.getElementById('cp-area')?document.getElementById('cp-area').value:'Fábrica';
         c.proveedor=document.getElementById('cp-prov').value;
         c.ubicacion=document.getElementById('cp-ubic').value;
+        c.estadoMat=document.getElementById('cp-emat')?document.getElementById('cp-emat').value:'N';
       } else {
         var newCosto=parseFloat(document.getElementById('cp-costo')?document.getElementById('cp-costo').value:0)||0;
         var newId=DB.nid++;
@@ -1802,7 +1812,8 @@ function modalComponente(id){
           venta_usd:parseFloat(document.getElementById('cp-venta-usd')?document.getElementById('cp-venta-usd').value:0)||0,
           area:document.getElementById('cp-area')?document.getElementById('cp-area').value:'Fábrica',
           proveedor:document.getElementById('cp-prov')?document.getElementById('cp-prov').value:'',
-          ubicacion:document.getElementById('cp-ubic')?document.getElementById('cp-ubic').value:''
+          ubicacion:document.getElementById('cp-ubic')?document.getElementById('cp-ubic').value:'',
+          estadoMat:document.getElementById('cp-emat')?document.getElementById('cp-emat').value:'N'
         });
         var stockIni=parseFloat(document.getElementById('cp-stock-ini')?document.getElementById('cp-stock-ini').value:0)||0;
         if(stockIni>0){
