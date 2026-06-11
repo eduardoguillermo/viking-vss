@@ -1535,7 +1535,7 @@ function renderStock(){
   var tc=parseFloat((DB.config&&DB.config.tipoCambio)||1);
   var valorTotal=DB.componentes.reduce(function(a,c){return a+stockActual(c.id)*(parseFloat(c.costo)||0);},0);
   var valorTotalUSD=DB.componentes.reduce(function(a,c){
-    var cu=parseFloat(c.costoUSD)||(tc>1?(parseFloat(c.costo)||0)/tc:0);
+    var cu=parseFloat(c.costo_usd||c.costoUSD)||(tc>1?(parseFloat(c.costo)||0)/tc:0);
     return a+stockActual(c.id)*cu;
   },0);
 
@@ -1559,7 +1559,7 @@ function renderStock(){
       '<td>'+(c.ubicacion||'—')+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
       '<td style="text-align:right;font-size:11px">'+(c.costo?'$'+Math.round(parseFloat(c.costo)).toLocaleString('es-AR'):'—')+'</td>'+
-      '<td style="text-align:right;font-size:11px">'+(c.costoUSD?'U$S '+parseFloat(c.costoUSD).toFixed(1):(c.costo&&tc>1?'U$S '+Math.round(parseFloat(c.costo)/tc):'—'))+'</td>'+
+      '<td style="text-align:right;font-size:11px">'+((c.costo_usd||c.costoUSD)?'U$S '+parseFloat(c.costo_usd||c.costoUSD).toFixed(1):(c.costo&&tc>1?'U$S '+Math.round(parseFloat(c.costo)/tc):'—'))+'</td>'+
       '<td></td>'+
     '</tr>';
   }).join('');
@@ -1864,7 +1864,7 @@ function mostrarPrecioComp(){
   if(!comp){ el.textContent='—'; return; }
   var tc = parseFloat((DB.config&&DB.config.tipoCambio)||1);
   var pesos = comp.costo ? '$'+Math.round(parseFloat(comp.costo)).toLocaleString('es-AR') : '—';
-  var usd = comp.costoUSD ? 'U$S '+parseFloat(comp.costoUSD).toFixed(2) :
+  var usd = (comp.costo_usd||comp.costoUSD) ? 'U$S '+parseFloat(comp.costo_usd||comp.costoUSD).toFixed(2) :
             (comp.costo&&tc>1 ? 'U$S '+Math.round(parseFloat(comp.costo)/tc) : '—');
   el.textContent = pesos + ' / ' + usd;
   el.style.color = 'var(--text)';
@@ -1913,7 +1913,7 @@ function modalMovimiento(tipo, preselCid){
       if(tipo==='Entrada'){
         var compCat=DB.componentes.find(function(c){return c.id===parseInt(document.getElementById('mv-cid').value);});
         mov.precio=compCat?parseFloat(compCat.costo)||0:0;
-        mov.precioUSD=compCat?parseFloat(compCat.costoUSD)||0:0;
+        mov.precioUSD=compCat?parseFloat(compCat.costo_usd||compCat.costoUSD)||0:0;
         mov.ref=document.getElementById('mv-ref').value;
         mov.lote=document.getElementById('mv-lote').value;
       } else if(esInstalacion){
