@@ -2643,6 +2643,175 @@ function reportePresupuestos(){
   reporteContainer('📄 Presupuestos por período', h);
 }
 
+
+function reporteUbicaciones(){
+  // Agrupar componentes por ubicación
+  var grupos = {};
+  DB.componentes.forEach(function(c){
+    var ubic = (c.ubicacion||'').trim();
+    var key = ubic || '__sin_ubicacion__';
+    if(!grupos[key]) grupos[key] = [];
+    grupos[key].push(c);
+  });
+
+  // Ordenar ubicaciones alfabéticamente, sin-ubicación al final
+  var keys = Object.keys(grupos).filter(function(k){return k!=='__sin_ubicacion__';}).sort();
+  if(grupos['__sin_ubicacion__']) keys.push('__sin_ubicacion__');
+
+  var html =
+    // Barra de herramientas con toggle y búsqueda
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">'+
+      '<div style="display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden">'+
+        '<button id="ubic-tab-cajas" class="btn" onclick="ubicToggle(\'cajas\')" style="border-radius:0;border:none;background:var(--primary);color:#fff;font-size:12px;padding:5px 14px">📦 Por caja</button>'+
+        '<button id="ubic-tab-buscar" class="btn" onclick="ubicToggle(\'buscar\')" style="border-radius:0;border:none;background:transparent;font-size:12px;padding:5px 14px">🔍 Buscar componente</button>'+
+      '</div>'+
+      '<input id="ubic-q" type="text" placeholder="Buscar componente o caja..." oninput="ubicRender()" '+
+        'style="flex:1;min-width:180px;padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface2);color:var(--text)">'+
+      '<select id="ubic-area" onchange="ubicRender()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">'+
+        '<option value="">Todas las áreas</option>'+
+        '<option>Fábrica</option><option>Mantenimiento</option><option>Instalacion</option>'+
+      '</select>'+
+    '</div>'+
+    '<div id="ubic-body"></div>';
+
+  reporteContainer('📦 Ubicaciones / Cajas', html);
+
+  // Estado persistente en closures
+  window._ubicMode = 'cajas';
+  window._ubicGrupos = grupos;
+  window._ubicKeys = keys;
+  window.ubicToggle = function(mode){
+    window._ubicMode = mode;
+    var btnC = document.getElementById('ubic-tab-cajas');
+    var btnB = document.getElementById('ubic-tab-buscar');
+    if(btnC && btnB){
+      btnC.style.background = mode==='cajas'?'var(--primary)':'transparent';
+      btnC.style.color      = mode==='cajas'?'#fff':'';
+      btnB.style.background = mode==='buscar'?'var(--primary)':'transparent';
+      btnB.style.color      = mode==='buscar'?'#fff':'';
+    }
+    var qEl = document.getElementById('ubic-q');
+    if(qEl) qEl.placeholder = mode==='cajas'?'Filtrar cajas...':'Buscar componente...';
+    ubicRender();
+  };
+  window.ubicRender = function(){
+    var q    = (document.getElementById('ubic-q')?document.getElementById('ubic-q').value||'':'').toLowerCase();
+    var area = document.getElementById('ubic-area')?document.getElementById('ubic-area').value:'';
+    var body = document.getElementById('ubic-body');
+    if(!body) return;
+    var mode = window._ubicMode;
+    var grupos = window._ubicGrupos;
+    var keys   = window._ubicKeys;
+
+    if(mode==='buscar'){
+      // ── VISTA BUSCAR ──────────────────────────────────────────────────
+      if(!q){ body.innerHTML='<p style="color:var(--text2);font-size:12px;padding:8px 0">Escribí el nombre o código del componente que buscás.</p>'; return; }
+      var results = DB.componentes.filter(function(c){
+        return (c.desc+c.codigo+(c.categoria||'')).toLowerCase().includes(q)
+          && (!area || c.area===area);
+      });
+      if(!results.length){ body.innerHTML='<p style="color:var(--text2);font-size:12px;padding:8px 0">Sin resultados para "'+q+'".</p>'; return; }
+      var h='<table style="width:100%"><thead><tr>'+
+        '<th>Código</th><th>Descripción</th><th>Ubicación</th><th>Área</th><th style="text-align:center">Stock</th><th style="text-align:center">Estado</th>'+
+        '</tr></thead><tbody>';
+      results.forEach(function(c){
+        var qty = stockActual(c.id);
+        var min = parseFloat(c.min)||0;
+        var sc  = qty<=0?'var(--red)':qty<=min?'var(--amber)':'var(--green)';
+        var eMat= c.estadoMat==='R'?'<span class="pill p-a">R</span>':'<span class="pill p-g">N</span>';
+        var ubic= (c.ubicacion||'').trim()||'<span style="color:var(--text2);font-style:italic">Sin asignar</span>';
+        h+='<tr>'+
+          '<td style="font-family:monospace;font-size:11px">'+c.codigo+'</td>'+
+          '<td><strong>'+c.desc+'</strong></td>'+
+          '<td><strong style="color:var(--primary)">'+ubic+'</strong></td>'+
+          '<td><span class="pill '+(c.area==='Mantenimiento'?'p-b':c.area==='Instalacion'?'p-a':'p-g')+'" style="font-size:10px">'+( c.area||'—')+'</span></td>'+
+          '<td style="text-align:center;font-weight:700;color:'+sc+'">'+qty+' '+(c.unidad||'')+'</td>'+
+          '<td style="text-align:center">'+eMat+'</td>'+
+        '</tr>';
+      });
+      h+='</tbody></table>';
+      body.innerHTML = h;
+
+    } else {
+      // ── VISTA CAJAS ───────────────────────────────────────────────────
+      var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px">';
+      var hayAlgo = false;
+
+      keys.forEach(function(key){
+        var comps = grupos[key];
+        if(!comps) return;
+
+        // Filtro área
+        if(area) comps = comps.filter(function(c){return c.area===area;});
+        // Filtro búsqueda por nombre de caja o componente
+        if(q){
+          var cajaMatch = key!=='__sin_ubicacion__' && key.toLowerCase().includes(q);
+          if(!cajaMatch){
+            comps = comps.filter(function(c){
+              return (c.desc+c.codigo+(c.categoria||'')).toLowerCase().includes(q);
+            });
+          }
+        }
+        if(!comps.length) return;
+        hayAlgo = true;
+
+        var criticos = comps.filter(function(c){
+          var qty=stockActual(c.id); return qty<=(parseFloat(c.min)||0);
+        }).length;
+        var sinStock = comps.filter(function(c){return stockActual(c.id)<=0;}).length;
+
+        var esVacia = key==='__sin_ubicacion__';
+        var titulo  = esVacia ? '⚠ Sin ubicación asignada' : '📦 '+key;
+        var badgeColor = criticos>0?'var(--amber)':sinStock>0?'var(--red)':'var(--green)';
+        var badgeText  = sinStock>0?sinStock+' sin stock':criticos>0?criticos+' crítico'+(criticos>1?'s':''):'OK';
+
+        html+=
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">'+
+            // Header de tarjeta
+            '<div style="background:var(--surface2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">'+
+              '<div style="font-weight:700;font-size:13px">'+titulo+'</div>'+
+              '<div style="display:flex;gap:6px;align-items:center">'+
+                '<span style="font-size:11px;color:var(--text2)">'+comps.length+' ítem'+(comps.length!==1?'s':'')+'</span>'+
+                '<span style="font-size:10px;font-weight:700;color:'+badgeColor+'">'+badgeText+'</span>'+
+              '</div>'+
+            '</div>'+
+            // Tabla interna
+            '<table style="width:100%;border-collapse:collapse">'+
+              '<thead><tr>'+
+                '<th style="font-size:10px;padding:4px 8px;text-align:left;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border)">Código</th>'+
+                '<th style="font-size:10px;padding:4px 8px;text-align:left;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border)">Descripción</th>'+
+                '<th style="font-size:10px;padding:4px 8px;text-align:center;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border)">Stock</th>'+
+                '<th style="font-size:10px;padding:4px 8px;text-align:center;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border)">Est.</th>'+
+              '</tr></thead>'+
+              '<tbody>'+
+              comps.map(function(c, ri){
+                var qty = stockActual(c.id);
+                var min = parseFloat(c.min)||0;
+                var sc  = qty<=0?'var(--red)':qty<=min?'var(--amber)':'var(--green)';
+                var eMat= c.estadoMat==='R'?'<span class="pill p-a" style="font-size:9px;padding:1px 4px">R</span>':'<span class="pill p-g" style="font-size:9px;padding:1px 4px">N</span>';
+                var bg  = ri%2===0?'':'background:var(--surface2)';
+                return '<tr style="'+bg+'">'+
+                  '<td style="font-family:monospace;font-size:10px;padding:4px 8px;color:var(--text2)">'+c.codigo+'</td>'+
+                  '<td style="font-size:11px;padding:4px 8px">'+c.desc+'</td>'+
+                  '<td style="font-size:12px;font-weight:700;text-align:center;padding:4px 8px;color:'+sc+'">'+qty+'<span style="font-size:9px;color:var(--text2);font-weight:400"> '+( c.unidad||'')+'</span></td>'+
+                  '<td style="text-align:center;padding:4px 8px">'+eMat+'</td>'+
+                '</tr>';
+              }).join('')+
+              '</tbody>'+
+            '</table>'+
+          '</div>';
+      });
+
+      if(!hayAlgo) html+='<p style="color:var(--text2);font-size:12px;padding:8px 0">Sin resultados.</p>';
+      html+='</div>';
+      body.innerHTML = html;
+    }
+  };
+
+  // Render inicial
+  window.ubicRender();
+}
+
 function reporteStockCritico(){
   const tc=(DB.config&&DB.config.tipoCambio)||1;
   const criticos=DB.componentes.filter(function(c){return stockActual(c.id)<=(parseFloat(c.min)||0);});
