@@ -1558,7 +1558,6 @@ function renderStock(){
       '<td>'+(c.min||0)+' '+c.unidad+'</td>'+
       '<td>'+(c.ubicacion||'—')+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
-      '<td>'+(c.area||'—')+'</td>'+
       '<td style="text-align:right;font-size:11px">'+(c.costo?'$'+Math.round(parseFloat(c.costo)).toLocaleString('es-AR'):'—')+'</td>'+
       '<td style="text-align:right;font-size:11px">'+((c.costo_usd||c.costoUSD)?'U$S '+parseFloat(c.costo_usd||c.costoUSD).toFixed(1):(c.costo&&tc>1?'U$S '+Math.round(parseFloat(c.costo)/tc):'—'))+'</td>'+
       '<td></td>'+
@@ -1767,6 +1766,10 @@ function modalComponente(id){
         '</select></div>'+
       '<div class="fg"><label>Ubicación</label><input id="cp-ubic" value="'+(c?c.ubicacion||'':'')+'" placeholder="Ej: Estante A, cajón 3" list="dl-cp-ubic">'+
       '<datalist id="dl-cp-ubic">'+(function(){var u=[...new Set(DB.componentes.filter(function(x){return x.ubicacion;}).map(function(x){return x.ubicacion;}))];return u.map(function(u){return '<option value="'+u+'">'+u+'</option>';}).join('');})()+'</datalist></div>'+
+      (!c?'<div class="fg full" style="grid-column:1/-1"><hr style="border:none;border-top:1px solid var(--border);margin:4px 0"></div>'+
+        '<div class="fg full"><div class="sectitle" style="margin:0 0 6px">Stock inicial</div></div>'+
+        '<div class="fg"><label>Cantidad</label><input id="cp-stock-ini" type="number" min="0" value="0"></div>'+
+        '<div class="fg"><label>Motivo</label><input id="cp-stock-mot" value="Stock inicial" placeholder="Ej: Stock inicial, compra, etc."></div>':'')+
     '</div>',
     function(){
       const cod=document.getElementById('cp-cod').value.trim();
@@ -1787,12 +1790,13 @@ function modalComponente(id){
         c.ubicacion=document.getElementById('cp-ubic').value;
       } else {
         var newCosto=parseFloat(document.getElementById('cp-costo')?document.getElementById('cp-costo').value:0)||0;
+        var newId=DB.nid++;
         DB.componentes.push({
-          id:DB.nid++,codigo:cod,desc:desc,categoria:cat,
-          unidad:document.getElementById('cp-uni').value,
+          id:newId,codigo:cod,desc:desc,categoria:cat,
           unidad:document.getElementById('cp-uni')?document.getElementById('cp-uni').value:'',
           min:parseFloat(document.getElementById('cp-min')?document.getElementById('cp-min').value:0)||0,
           precio:newCosto,
+          costo:newCosto,
           costo_usd:parseFloat(document.getElementById('cp-costo-usd')?document.getElementById('cp-costo-usd').value:0)||0,
           venta:parseFloat(document.getElementById('cp-venta')?document.getElementById('cp-venta').value:0)||0,
           venta_usd:parseFloat(document.getElementById('cp-venta-usd')?document.getElementById('cp-venta-usd').value:0)||0,
@@ -1800,6 +1804,11 @@ function modalComponente(id){
           proveedor:document.getElementById('cp-prov')?document.getElementById('cp-prov').value:'',
           ubicacion:document.getElementById('cp-ubic')?document.getElementById('cp-ubic').value:''
         });
+        var stockIni=parseFloat(document.getElementById('cp-stock-ini')?document.getElementById('cp-stock-ini').value:0)||0;
+        if(stockIni>0){
+          var motIni=(document.getElementById('cp-stock-mot')?document.getElementById('cp-stock-mot').value:'Stock inicial').trim()||'Stock inicial';
+          DB.movimientos.push({id:DB.nid++,cid:newId,tipo:'Entrada',cant:stockIni,fecha:today(),ref:'',lote:'',precio:newCosto,nota:motIni});
+        }
       }
       save();renderCatalogo();return true;
     });
