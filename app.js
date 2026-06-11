@@ -1853,18 +1853,20 @@ function renderMovimientos(){
   });
 
   const tb=document.getElementById('tbody-mov');
-  if(!list.length){tb.innerHTML='<tr><td colspan="9" class="empty">Sin movimientos registrados.</td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="11" class="empty">Sin movimientos registrados.</td></tr>';return;}
   const tc=(DB.config&&DB.config.tipoCambio)||1;
   tb.innerHTML=list.map(function(m){
     const comp=DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{desc:'—',codigo:'—',unidad:''};
     const cli=m.clienteId?DB.clientes.find(function(c){return c.id===m.clienteId;}):null;
     const precioUSD=m.precio&&tc>0?'U$S '+(parseFloat(m.precio)/tc).toFixed(2):'—';
+    var eMat=m.estadoMat==='R'?'<span class="pill p-a" title="Recuperado">R</span>':'<span class="pill p-g" title="Nuevo">N</span>';
     return '<tr>'+
       '<td>'+m.fecha+'</td>'+
       '<td>'+movTipoPill(m.tipo)+'</td>'+
       '<td style="font-family:monospace;font-size:11px">'+comp.codigo+'</td>'+
       '<td>'+comp.desc+'</td>'+
       '<td style="font-weight:600">'+(m.tipo==='Entrada'?'+':'-')+(m.cant||0)+' '+comp.unidad+'</td>'+
+      '<td style="text-align:center">'+eMat+'</td>'+
       '<td>'+(m.precio?'$'+parseFloat(m.precio).toLocaleString('es-AR'):'—')+'</td>'+
       '<td>'+precioUSD+'</td>'+
       '<td>'+(m.ref||'—')+'</td>'+
@@ -1911,7 +1913,12 @@ function modalMovimiento(tipo, preselCid){
       (tipo==='Entrada'?
         '<div class="fg"><label>Precio catálogo</label><div id="mv-precio-display" style="padding:6px 9px;font-size:12px;color:var(--text2)">— seleccionar componente —</div></div>'+
         '<div class="fg"><label>Remito / Factura ref.</label><input id="mv-ref" placeholder="Ej: FAC-00123"></div>'+
-        '<div class="fg"><label>Lote / N° de serie</label><input id="mv-lote" placeholder="Opcional"></div>'
+        '<div class="fg"><label>Lote / N° de serie</label><input id="mv-lote" placeholder="Opcional"></div>'+
+        '<div class="fg"><label>Estado material *</label>'+
+          '<select id="mv-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+            '<option value="N" selected>N — Nuevo</option>'+
+            '<option value="R">R — Recuperado</option>'+
+          '</select></div>'
       :
         (esInstalacion?
           '<div class="fg"><label>Cliente *</label>'+
@@ -1920,7 +1927,12 @@ function modalMovimiento(tipo, preselCid){
             '</select></div>'
           :'')+
         '<div class="fg"><label>Ubicación</label><input id="mv-ubic" list="dl-mv-ubic" placeholder="Ej: Estante A">'+stockDatalist("mv-ubic","",'ubicaciones')+'</div>'+
-        '<div class="fg"><label>Motivo / Nota</label><input id="mv-nota" placeholder="Ej: Merma, uso interno..."></div>'
+        '<div class="fg"><label>Motivo / Nota</label><input id="mv-nota" placeholder="Ej: Merma, uso interno..."></div>'+
+        '<div class="fg"><label>Estado material</label>'+
+          '<select id="mv-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+            '<option value="N" selected>N — Nuevo</option>'+
+            '<option value="R">R — Recuperado</option>'+
+          '</select></div>'
       )+
     '</div>',
     function(){
@@ -1937,12 +1949,15 @@ function modalMovimiento(tipo, preselCid){
         mov.precioUSD=compCat?parseFloat(compCat.costo_usd||compCat.costoUSD)||0:0;
         mov.ref=document.getElementById('mv-ref').value;
         mov.lote=document.getElementById('mv-lote').value;
+        mov.estadoMat=document.getElementById('mv-emat')?document.getElementById('mv-emat').value:'N';
       } else if(esInstalacion){
         const cliId=parseInt(document.getElementById('mv-cli').value);
         if(!cliId){alert('Seleccioná un cliente.');return false;}
         mov.clienteId=cliId;
+        mov.estadoMat=document.getElementById('mv-emat')?document.getElementById('mv-emat').value:'N';
       } else {
         mov.nota=document.getElementById('mv-nota').value;
+        mov.estadoMat=document.getElementById('mv-emat')?document.getElementById('mv-emat').value:'N';
       }
       DB.movimientos.push(mov);
       save();renderMovimientos();renderStock();return true;
