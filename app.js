@@ -1607,6 +1607,7 @@ function renderCatalogo(){
     else if(_catSort.col==='codigo'){va=a.codigo||'';vb=b.codigo||'';}
     else if(_catSort.col==='categoria'){va=a.categoria||'';vb=b.categoria||'';}
     else if(_catSort.col==='area'){va=a.area||'';vb=b.area||'';}
+    else if(_catSort.col==='ubicacion'){va=a.ubicacion||'';vb=b.ubicacion||'';}
     else if(_catSort.col==='stock'){va=stockActual(a.id);vb=stockActual(b.id);return _catSort.dir*(va-vb);}
     return _catSort.dir*va.localeCompare(vb);
   });
@@ -1644,7 +1645,7 @@ function renderCatalogo(){
   }).join('');
 
   // Update sort indicators on headers
-  var cols = {codigo:'Código',desc:'Descripción',categoria:'Categoría',stock:'Stock',area:'Área'};
+  var cols = {codigo:'Código',desc:'Descripción',categoria:'Categoría',stock:'Stock',area:'Área',ubicacion:'Ubicación'};
   Object.keys(cols).forEach(function(col){
     var th = document.getElementById('th-'+col);
     if(!th) return;
