@@ -102,7 +102,23 @@ DB.clientes.forEach(function(c){
 DB.presupuestos.forEach(function(p){if(!p.email) p.email='';if(!p.ambientes) p.ambientes='';});
 DB.componentes.forEach(function(c){if(!c.area) c.area='Fábrica';});
 
-function save(){ localStorage.setItem(SKEY,JSON.stringify(DB)); }
+var _stockCache = null;
+function _buildStockCache(){
+  _stockCache = {};
+  DB.movimientos.forEach(function(m){
+    var cid = m.cid||m.compId;
+    if(!cid) return;
+    if(!_stockCache[cid]) _stockCache[cid]=0;
+    _stockCache[cid] += m.tipo==='Entrada'?(parseFloat(m.cant)||0):-(parseFloat(m.cant)||0);
+  });
+}
+function stockActual(cid){
+  if(!_stockCache) _buildStockCache();
+  return _stockCache[cid]||0;
+}
+function invalidarStockCache(){ _stockCache=null; }
+
+function save(){ invalidarStockCache(); localStorage.setItem(SKEY,JSON.stringify(DB)); }
 
 // =======================================================
 // NAV
@@ -1417,11 +1433,7 @@ function toggleStockCritico(){
   renderStock();
 }
 
-function stockActual(cid){
-  const entradas = DB.movimientos.filter(m=>m.cid===cid&&m.tipo==='Entrada').reduce(function(a,m){return a+(parseFloat(m.cant)||0);},0);
-  const salidas = DB.movimientos.filter(m=>m.cid===cid&&m.tipo!=='Entrada').reduce(function(a,m){return a+(parseFloat(m.cant)||0);},0);
-  return entradas - salidas;
-}
+// stockActual — ver definición en la cabecera del módulo logística
 
 function stockPill(cant, min){
   if(cant<=0) return '<span class="pill p-r">Sin stock</span>';
@@ -1673,8 +1685,11 @@ function pdfCatalogo(){
   var empresa=(DB.config&&DB.config.empresa)||'Viking Security Systems';
   var q=(document.getElementById('q-cat')?document.getElementById('q-cat').value||'':'').toLowerCase();
   var fc=document.getElementById('cat-filter')?document.getElementById('cat-filter').value:'';
+  var fprov2=document.getElementById('cat-prov-filter')?document.getElementById('cat-prov-filter').value:'';
   var list=DB.componentes.filter(function(c){
-    return(!q||(c.codigo+c.desc+(c.proveedor||'')).toLowerCase().includes(q))&&(!fc||c.categoria===fc);
+    return(!q||(c.codigo+c.desc+(c.proveedor||'')).toLowerCase().includes(q))
+      &&(!fc||c.categoria===fc)
+      &&(!fprov2||(c.proveedor||'').trim()===fprov2);
   }).sort(function(a,b){var sa=(a.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();var sb=(b.desc||'').replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/,'').toLowerCase();return sa.localeCompare(sb,'es');});
 
   var rows=list.map(function(c){
@@ -1980,13 +1995,9 @@ function renderOrdenes(){
   if(!DB.ordenes.length){tb.innerHTML='<tr><td colspan="7" class="empty">Sin órdenes de compra.</td></tr>';return;}
   var q=(document.getElementById('q-ord')?document.getElementById('q-ord').value||'':'').toLowerCase();
   const list=[...DB.ordenes].filter(function(o){
-    return !q||((o.numero||'')+(o.proveedor||'')).toLowerCase().includes(q);
+    return !q||((o.numero||'')+(o.proveedor||'')+(o.estado||'')).toLowerCase().includes(q);
   }).sort(function(a,b){
-    var ca=DB.componentes.find(function(c){return c.id===(a.cid||a.compId);})||{};
-    var cb=DB.componentes.find(function(c){return c.id===(b.cid||b.compId);})||{};
-    var sa=(ca.codigo||'').toLowerCase(); var sb=(cb.codigo||'').toLowerCase();
-    if(sa!==sb) return sa.localeCompare(sb);
-    return b.fecha.localeCompare(a.fecha);
+    return (b.fecha||'').localeCompare(a.fecha||'');
   });
   tb.innerHTML=list.map(function(o){
     const estPill={'Pendiente':'p-a',Enviada:'p-b',Recibida:'p-g',Cancelada:'p-r'};
@@ -2016,9 +2027,10 @@ function renderOrdenes(){
 
 function generarOrdenAutomatica(){
   const criticos=DB.componentes.filter(function(c){
-    return stockActual(c.id)<=(parseFloat(c.min)||0);
+    var min=parseFloat(c.min)||0;
+    return min>0 && stockActual(c.id)<min;
   });
-  if(!criticos.length){alert('No hay componentes por debajo del stock mínimo.');return;}
+  if(!criticos.length){alert('No hay componentes por debajo del stock mínimo (con mínimo > 0).');return;}
 
   // Group by proveedor
   var porProv = {};
@@ -2112,7 +2124,9 @@ function cambiarEstadoOrden(id){
   if(!o) return;
   const estados=['Pendiente','Enviada','Recibida','Cancelada'];
   const cur=estados.indexOf(o.estado);
-  const sig=estados[(cur+1)%estados.length];
+  if(cur===estados.length-1){alert('Esta orden está Cancelada y no puede avanzar de estado.');return;}
+  if(o.estado==='Recibida'){alert('Esta orden ya fue recibida. No se puede modificar el estado.');return;}
+  const sig=estados[cur+1];
   if(!confirm('Cambiar estado a "'+sig+'"?'))return;
   o.estado=sig;
   if(sig==='Recibida'){
@@ -2131,11 +2145,11 @@ function cambiarEstadoOrden(id){
 function borrarMovimiento(id){
   var m = DB.movimientos.find(function(x){return x.id===id;});
   if(!m) return;
-  var comp = DB.componentes.find(function(c){return c.id===m.compId;});
+  var comp = DB.componentes.find(function(c){return c.id===(m.cid||m.compId);});
   var desc = comp?comp.desc:'componente';
   if(!confirm('¿Eliminar el movimiento de '+m.tipo.toLowerCase()+' de "'+desc+'" del '+m.fecha+'?')) return;
   DB.movimientos = DB.movimientos.filter(function(x){return x.id!==id;});
-  save(); renderMovimientos();
+  save(); renderMovimientos(); renderStock();
 }
 
 function editarMovimiento(id){
@@ -2151,6 +2165,11 @@ function editarMovimiento(id){
     '<div class="fg"><label>Referencia</label><input id="em-ref" value="'+(m.ref||'')+'"></div>'+
     '<div class="fg"><label>Lote</label><input id="em-lote" value="'+(m.lote||'')+'"></div>'+
     '<div class="fg"><label>Nota</label><input id="em-nota" value="'+(m.nota||'')+'"></div>'+
+    '<div class="fg"><label>Estado material</label>'+
+      '<select id="em-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+        '<option value="N"'+(m.estadoMat!=='R'?' selected':'')+'>N — Nuevo</option>'+
+        '<option value="R"'+(m.estadoMat==='R'?' selected':'')+'>R — Recuperado</option>'+
+      '</select></div>'+
     '</div>',
     function(){
       m.fecha=document.getElementById('em-fecha').value;
@@ -2158,6 +2177,7 @@ function editarMovimiento(id){
       m.ref=document.getElementById('em-ref').value;
       m.lote=document.getElementById('em-lote').value;
       m.nota=document.getElementById('em-nota').value;
+      m.estadoMat=document.getElementById('em-emat')?document.getElementById('em-emat').value:'N';
       save(); renderMovimientos(); return true;
     });
 }
