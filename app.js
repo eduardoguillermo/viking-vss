@@ -3517,7 +3517,7 @@ function renderReportes(){
   },0);
 
   // 4. Valor inventario por area
-  var invAreas = {Fabrica:0,Mantenimiento:0,Instalacion:0,Ambas:0};
+  var invAreas = {Fabrica:0,Mantenimiento:0,Instalacion:0};
   DB.componentes.forEach(function(c){
     var area = c.area||'Fabrica';
     var val = stockActual(c.id)*(parseFloat(c.precio)||0);
