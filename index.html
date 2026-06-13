@@ -518,6 +518,9 @@ function toggleNav(el){
           <option value="">Todos los tipos</option>
           <option>Entrada</option><option>Salida manual</option><option>Salida instalación</option>
         </select>
+        <select id="mov-motivo-filter" onchange="renderMovimientos()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">
+          <option value="">Todos los motivos</option>
+        </select>
         <button class="btn btn-p" onclick="modalMovimiento('Entrada')">📥 Entrada</button>
         <button class="btn" onclick="modalMovimiento('Salida manual')">📤 Salida</button>
         <button class="btn btn-g" onclick="modalMovimiento('Salida instalación')">🔧 Instalación</button>
