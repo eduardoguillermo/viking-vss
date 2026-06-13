@@ -37,7 +37,8 @@ function defData(){
       desc_Base:'Sistema de seguridad basico con control remoto via Telegram. Notificaciones en tiempo real y activacion remota.',
       desc_Energy:'Sistema con gestion energetica integrada, monitoreo de corte de suministro, bateria de respaldo y sirena exterior.',
       desc_Comfort:'Sistema avanzado con automatizacion, integracion Zigbee completa, control de cargas y notificaciones inteligentes.',
-      desc_Black:'Sistema de maxima prestacion con multiples usuarios, historial extendido, integracion de camaras y soporte prioritario.'
+      desc_Black:'Sistema de maxima prestacion con multiples usuarios, historial extendido, integracion de camaras y soporte prioritario.',
+      motivosSalida:['Merma / descarte','Uso interno / prototipo','Garantía cliente','Reposición a cliente','Prueba de calidad','Devolución a proveedor','Rotura / daño']
     }
   };
 }
@@ -61,6 +62,7 @@ if(!DB.fabricacion) DB.fabricacion = [];
 if(!DB.instalaciones) DB.instalaciones = [];
 if(!DB.mantenimientos) DB.mantenimientos = [];
 if(!DB.kitinst) DB.kitinst = [];
+if(!DB.config.motivosSalida) DB.config.motivosSalida = ['Merma / descarte','Uso interno / prototipo','Garantía cliente','Reposición a cliente','Prueba de calidad','Devolución a proveedor','Rotura / daño'];
 
 // Migrate c.mant[] to DB.mantenimientos[]
 (function migrarMantenimientos(){
@@ -1952,7 +1954,14 @@ function modalMovimiento(tipo, preselCid){
             '</select></div>'
           :'')+
         '<div class="fg"><label>Ubicación</label><input id="mv-ubic" list="dl-mv-ubic" placeholder="Ej: Estante A">'+stockDatalist("mv-ubic","",'ubicaciones')+'</div>'+
-        '<div class="fg"><label>Motivo / Nota</label><input id="mv-nota" placeholder="Ej: Merma, uso interno..."></div>'+
+        '<div class="fg"><label>Motivo *</label>'+
+          '<select id="mv-motivo-sel" onchange="toggleMotivoOtro()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+            (DB.config.motivosSalida||[]).map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('')+
+            '<option value="__otro__">Otro...</option>'+
+          '</select></div>'+
+        '<div class="fg" id="mv-motivo-otro-wrap" style="display:none"><label>Especificar motivo</label>'+
+          '<input id="mv-motivo-otro" placeholder="Describí el motivo...">'+
+        '</div>'+
         '<div class="fg"><label>Estado material</label>'+
           '<select id="mv-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
             '<option value="N" selected>N — Nuevo</option>'+
@@ -1981,12 +1990,156 @@ function modalMovimiento(tipo, preselCid){
         mov.clienteId=cliId;
         mov.estadoMat=document.getElementById('mv-emat')?document.getElementById('mv-emat').value:'N';
       } else {
-        mov.nota=document.getElementById('mv-nota').value;
+        var motivoSel = document.getElementById('mv-motivo-sel');
+        var motivoOtro = document.getElementById('mv-motivo-otro');
+        var motivoVal = motivoSel ? motivoSel.value : '';
+        if(motivoVal === '__otro__'){
+          motivoVal = motivoOtro ? motivoOtro.value.trim() : '';
+          // Agregar a la lista si no existe
+          if(motivoVal && DB.config.motivosSalida && DB.config.motivosSalida.indexOf(motivoVal) === -1){
+            DB.config.motivosSalida.push(motivoVal);
+          }
+        }
+        mov.nota = motivoVal;
         mov.estadoMat=document.getElementById('mv-emat')?document.getElementById('mv-emat').value:'N';
       }
       DB.movimientos.push(mov);
       save();renderMovimientos();renderStock();return true;
     });
+}
+
+// Toggle campo 'Otro' en modal salida manual
+function toggleMotivoOtro(){
+  var sel = document.getElementById('mv-motivo-sel');
+  var wrap = document.getElementById('mv-motivo-otro-wrap');
+  if(!sel || !wrap) return;
+  wrap.style.display = sel.value === '__otro__' ? '' : 'none';
+  if(sel.value === '__otro__'){
+    var inp = document.getElementById('mv-motivo-otro');
+    if(inp) inp.focus();
+  }
+}
+
+// Limpiar filtros del reporte salidas por motivo
+function limpiarFiltrosSM(){
+  var d=document.getElementById('rsm-desde'); if(d) d.value='';
+  var h=document.getElementById('rsm-hasta'); if(h) h.value='';
+  var c=document.getElementById('rsm-comp');  if(c) c.value='';
+  reporteSalidasPorMotivo();
+}
+
+// REPORTE: Salidas por motivo ================================
+function reporteSalidasPorMotivo(){
+  var hoy = today();
+  var primerMes = hoy.slice(0,7)+'-01';
+
+  // Leer filtros si ya están en DOM
+  var fDesde = document.getElementById('rsm-desde') ? document.getElementById('rsm-desde').value : primerMes;
+  var fHasta = document.getElementById('rsm-hasta') ? document.getElementById('rsm-hasta').value : hoy;
+  var fComp  = document.getElementById('rsm-comp')  ? document.getElementById('rsm-comp').value.toLowerCase()  : '';
+
+  // Solo movimientos de Salida manual en rango
+  var salidas = DB.movimientos.filter(function(m){
+    if(m.tipo !== 'Salida manual') return false;
+    if(fDesde && m.fecha < fDesde) return false;
+    if(fHasta && m.fecha > fHasta) return false;
+    if(fComp){
+      var comp = DB.componentes.find(function(c){return c.id===(m.cid||m.compId);});
+      if(!comp || !(comp.desc+comp.codigo).toLowerCase().includes(fComp)) return false;
+    }
+    return true;
+  });
+
+  // Agrupar por motivo
+  var grupos = {};
+  salidas.forEach(function(m){
+    var mot = (m.nota||'Sin motivo').trim() || 'Sin motivo';
+    if(!grupos[mot]) grupos[mot] = {movimientos:[], totalCant:0, totalValor:0};
+    var comp = DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{};
+    var valor = (parseFloat(m.cant)||0) * (parseFloat(comp.costo||comp.precio)||0);
+    grupos[mot].movimientos.push({m:m, comp:comp, valor:valor});
+    grupos[mot].totalCant += parseFloat(m.cant)||0;
+    grupos[mot].totalValor += valor;
+  });
+
+  var motivosOrdenados = Object.keys(grupos).sort(function(a,b){
+    return grupos[b].totalValor - grupos[a].totalValor;
+  });
+
+  var tc = (DB.config&&DB.config.tipoCambio)||1;
+
+  var h = '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Desde</label>'+
+      '<input id="rsm-desde" type="date" value="'+fDesde+'" onchange="reporteSalidasPorMotivo()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Hasta</label>'+
+      '<input id="rsm-hasta" type="date" value="'+fHasta+'" onchange="reporteSalidasPorMotivo()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Componente</label>'+
+      '<input id="rsm-comp" value="'+(fComp||'')+'" placeholder="Filtrar por componente..." onchange="reporteSalidasPorMotivo()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<button class="btn btn-sm" onclick="limpiarFiltrosSM()">✕ Limpiar</button>'+
+  '</div>';
+
+  if(!salidas.length){
+    h += '<div class="empty">Sin salidas manuales en el período seleccionado.</div>';
+    reporteContainer('📤 Salidas por motivo', h);
+    return;
+  }
+
+  // Stats generales
+  var totalMov = salidas.length;
+  var totalValor = salidas.reduce(function(a,m){
+    var comp = DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{};
+    return a + (parseFloat(m.cant)||0)*(parseFloat(comp.costo||comp.precio)||0);
+  },0);
+
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">'+
+    '<div class="stat"><div class="stat-n">'+totalMov+'</div><div class="stat-l">Movimientos</div></div>'+
+    '<div class="stat"><div class="stat-n">'+motivosOrdenados.length+'</div><div class="stat-l">Motivos distintos</div></div>'+
+    '<div class="stat"><div class="stat-n red">$'+Math.round(totalValor).toLocaleString('es-AR')+'</div><div class="stat-l">Valor total</div></div>'+
+  '</div>';
+
+  // Un bloque por motivo
+  motivosOrdenados.forEach(function(mot){
+    var g = grupos[mot];
+    var pct = totalValor > 0 ? Math.round(g.totalValor/totalValor*100) : 0;
+
+    h += '<div class="card" style="margin-bottom:10px">'+
+      '<div class="ch">'+
+        '<div class="ct">'+mot+'</div>'+
+        '<div style="display:flex;gap:10px;align-items:center;font-size:12px">'+
+          '<span style="color:var(--text2)">'+g.movimientos.length+' mov.</span>'+
+          '<span style="font-weight:700;color:var(--red)">$'+Math.round(g.totalValor).toLocaleString('es-AR')+'</span>'+
+          '<span style="color:var(--text2);font-size:11px">'+pct+'% del total</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="card-body">'+
+      // Barra de progreso
+      '<div style="background:var(--surface2);border-radius:3px;height:4px;margin-bottom:10px;overflow:hidden">'+
+        '<div style="height:100%;background:var(--red);width:'+pct+'%"></div>'+
+      '</div>'+
+      '<table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr style="background:var(--surface2)">'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:left">Fecha</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:left">Código</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:left">Componente</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:center">Cant.</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:right">Valor $</th>'+
+      '</tr></thead><tbody>'+
+      g.movimientos.map(function(item){
+        return '<tr style="border-bottom:1px solid var(--border)">'+
+          '<td style="padding:5px 10px;font-size:11px">'+item.m.fecha+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px;font-family:monospace">'+(item.comp.codigo||'—')+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px">'+( item.comp.desc||'—')+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px;text-align:center;font-weight:700">'+item.m.cant+(item.comp.unidad?' '+item.comp.unidad:'')+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px;text-align:right">'+(item.valor>0?'$'+Math.round(item.valor).toLocaleString('es-AR'):'—')+'</td>'+
+        '</tr>';
+      }).join('')+
+      '</tbody></table></div></div>';
+  });
+
+  reporteContainer('📤 Salidas por motivo', h);
 }
 
 // =RDENES =============================================
