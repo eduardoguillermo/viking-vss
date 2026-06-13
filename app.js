@@ -38,7 +38,8 @@ function defData(){
       desc_Energy:'Sistema con gestion energetica integrada, monitoreo de corte de suministro, bateria de respaldo y sirena exterior.',
       desc_Comfort:'Sistema avanzado con automatizacion, integracion Zigbee completa, control de cargas y notificaciones inteligentes.',
       desc_Black:'Sistema de maxima prestacion con multiples usuarios, historial extendido, integracion de camaras y soporte prioritario.',
-      motivosSalida:['Merma / descarte','Uso interno / prototipo','Garantía cliente','Reposición a cliente','Prueba de calidad','Devolución a proveedor','Rotura / daño']
+      motivosSalida:['Merma / descarte','Uso interno / prototipo','Garantía cliente','Reposición a cliente','Prueba de calidad','Devolución a proveedor','Rotura / daño'],
+      origenesEntrada:['Compra','Devolución','Otro']
     }
   };
 }
@@ -63,6 +64,7 @@ if(!DB.instalaciones) DB.instalaciones = [];
 if(!DB.mantenimientos) DB.mantenimientos = [];
 if(!DB.kitinst) DB.kitinst = [];
 if(!DB.config.motivosSalida) DB.config.motivosSalida = ['Merma / descarte','Uso interno / prototipo','Garantía cliente','Reposición a cliente','Prueba de calidad','Devolución a proveedor','Rotura / daño'];
+if(!DB.config.origenesEntrada) DB.config.origenesEntrada = ['Compra','Devolución','Otro'];
 
 // Migrate c.mant[] to DB.mantenimientos[]
 (function migrarMantenimientos(){
@@ -1869,6 +1871,7 @@ function renderMovimientos(){
   const q=(document.getElementById('q-mov').value||'').toLowerCase();
   const ft=document.getElementById('mov-tipo-filter').value;
   const fm=document.getElementById('mov-motivo-filter')?document.getElementById('mov-motivo-filter').value:'';
+  const fo=document.getElementById('mov-origen-filter')?document.getElementById('mov-origen-filter').value:'';
   // Poblar select de motivos con valores únicos del historial
   var selMot=document.getElementById('mov-motivo-filter');
   if(selMot){
@@ -1876,12 +1879,20 @@ function renderMovimientos(){
     var curVal=selMot.value;
     selMot.innerHTML='<option value="">Todos los motivos</option>'+motivosUsados.map(function(mot){return '<option value="'+mot+'"'+(mot===curVal?' selected':'')+'>'+mot+'</option>';}).join('');
   }
+  // Poblar select de orígenes con valores únicos del historial
+  var selOri=document.getElementById('mov-origen-filter');
+  if(selOri){
+    var origenesUsados=[...new Set(DB.movimientos.filter(function(m){return m.tipo==='Entrada'&&m.origen;}).map(function(m){return m.origen.trim();}))].sort();
+    var curOri=selOri.value;
+    selOri.innerHTML='<option value="">Todos los orígenes</option>'+origenesUsados.map(function(ori){return '<option value="'+ori+'"'+(ori===curOri?' selected':'')+'>'+ori+'</option>';}).join('');
+  }
   const list=DB.movimientos.filter(function(m){
     const comp=DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{desc:'—',codigo:'',unidad:''};
-    var matchQ=!q||(comp.desc+comp.codigo+(m.ref||'')+(m.nota||'')).toLowerCase().includes(q);
+    var matchQ=!q||(comp.desc+comp.codigo+(m.ref||'')+(m.nota||'')+(m.origen||'')).toLowerCase().includes(q);
     var matchT=!ft||m.tipo===ft;
     var matchM=!fm||(m.nota||'').trim()===fm;
-    return matchQ&&matchT&&matchM;
+    var matchO=!fo||(m.origen||'').trim()===fo;
+    return matchQ&&matchT&&matchM&&matchO;
   }).sort(function(a,b){
     var ca=DB.componentes.find(function(c){return c.id===(a.cid||a.compId);})||{};
     var cb=DB.componentes.find(function(c){return c.id===(b.cid||b.compId);})||{};
@@ -1909,6 +1920,7 @@ function renderMovimientos(){
       '<td>'+precioUSD+'</td>'+
       '<td>'+(m.ref||'—')+'</td>'+
       '<td>'+(cli?cli.nombre:(m.nota||'—'))+'</td>'+
+      '<td style="font-size:11px">'+(m.origen||'—')+'</td>'+
       '<td style="display:flex;gap:3px"><button class="btn btn-sm" onclick="editarMovimiento('+m.id+')">✏️</button>'+
       '<button class="btn btn-sm" style="color:var(--red)" onclick="borrarMovimiento('+m.id+')">🗑️</button></td>'+
     '</tr>';
@@ -1952,6 +1964,14 @@ function modalMovimiento(tipo, preselCid){
         '<div class="fg"><label>Precio catálogo</label><div id="mv-precio-display" style="padding:6px 9px;font-size:12px;color:var(--text2)">— seleccionar componente —</div></div>'+
         '<div class="fg"><label>Remito / Factura ref.</label><input id="mv-ref" placeholder="Ej: FAC-00123"></div>'+
         '<div class="fg"><label>Lote / N° de serie</label><input id="mv-lote" placeholder="Opcional"></div>'+
+        '<div class="fg"><label>Origen *</label>'+
+          '<select id="mv-origen-sel" onchange="toggleOrigenOtro()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
+            (DB.config.origenesEntrada||[]).map(function(o){return '<option value="'+o+'">'+o+'</option>';}).join('')+
+            '<option value="__otro__">Otro...</option>'+
+          '</select></div>'+
+        '<div class="fg" id="mv-origen-otro-wrap" style="display:none"><label>Especificar origen</label>'+
+          '<input id="mv-origen-otro" placeholder="Describí el origen...">'+
+        '</div>'+
         '<div class="fg"><label>Estado material *</label>'+
           '<select id="mv-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
             '<option value="N" selected>N — Nuevo</option>'+
@@ -1995,6 +2015,16 @@ function modalMovimiento(tipo, preselCid){
         mov.ref=document.getElementById('mv-ref').value;
         mov.lote=document.getElementById('mv-lote').value;
         mov.estadoMat=document.getElementById('mv-emat')?document.getElementById('mv-emat').value:'N';
+        var origenSel=document.getElementById('mv-origen-sel');
+        var origenOtro=document.getElementById('mv-origen-otro');
+        var origenVal=origenSel?origenSel.value:'';
+        if(origenVal==='__otro__'){
+          origenVal=origenOtro?origenOtro.value.trim():'';
+          if(origenVal&&DB.config.origenesEntrada&&DB.config.origenesEntrada.indexOf(origenVal)===-1){
+            DB.config.origenesEntrada.push(origenVal);
+          }
+        }
+        mov.origen=origenVal;
       } else if(esInstalacion){
         const cliId=parseInt(document.getElementById('mv-cli').value);
         if(!cliId){alert('Seleccioná un cliente.');return false;}
@@ -2019,6 +2049,15 @@ function modalMovimiento(tipo, preselCid){
     });
 }
 
+// Toggle campo 'Otro' en modal entrada - origen
+function toggleOrigenOtro(){
+  var sel=document.getElementById('mv-origen-sel');
+  var wrap=document.getElementById('mv-origen-otro-wrap');
+  if(!sel||!wrap) return;
+  wrap.style.display=sel.value==='__otro__'?'':'none';
+  if(sel.value==='__otro__'){var inp=document.getElementById('mv-origen-otro');if(inp)inp.focus();}
+}
+
 // Toggle campo 'Otro' en modal salida manual
 function toggleMotivoOtro(){
   var sel = document.getElementById('mv-motivo-sel');
@@ -2029,6 +2068,138 @@ function toggleMotivoOtro(){
     var inp = document.getElementById('mv-motivo-otro');
     if(inp) inp.focus();
   }
+}
+
+// REPORTE: Entradas por origen ================================
+function reporteEntradasPorOrigen(){
+  var hoy = today();
+  var primerMes = hoy.slice(0,7)+'-01';
+
+  var fDesde  = document.getElementById('reo-desde')  ? document.getElementById('reo-desde').value  : primerMes;
+  var fHasta  = document.getElementById('reo-hasta')  ? document.getElementById('reo-hasta').value  : hoy;
+  var fComp   = document.getElementById('reo-comp')   ? document.getElementById('reo-comp').value.toLowerCase()   : '';
+  var fOrigen = document.getElementById('reo-origen') ? document.getElementById('reo-origen').value : '';
+
+  var entradas = DB.movimientos.filter(function(m){
+    if(m.tipo !== 'Entrada') return false;
+    if(fDesde && m.fecha < fDesde) return false;
+    if(fHasta && m.fecha > fHasta) return false;
+    if(fComp){
+      var comp = DB.componentes.find(function(c){return c.id===(m.cid||m.compId);});
+      if(!comp || !(comp.desc+comp.codigo).toLowerCase().includes(fComp)) return false;
+    }
+    if(fOrigen && (m.origen||'Sin origen').trim() !== fOrigen) return false;
+    return true;
+  });
+
+  // Agrupar por origen
+  var grupos = {};
+  entradas.forEach(function(m){
+    var ori = (m.origen||'Sin origen').trim() || 'Sin origen';
+    if(!grupos[ori]) grupos[ori] = {movimientos:[], totalCant:0, totalValor:0};
+    var comp = DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{};
+    var valor = (parseFloat(m.cant)||0) * (parseFloat(comp.costo||comp.precio)||0);
+    grupos[ori].movimientos.push({m:m, comp:comp, valor:valor});
+    grupos[ori].totalCant += parseFloat(m.cant)||0;
+    grupos[ori].totalValor += valor;
+  });
+
+  var origenesOrdenados = Object.keys(grupos).sort(function(a,b){
+    return grupos[b].totalValor - grupos[a].totalValor;
+  });
+
+  var tc = (DB.config&&DB.config.tipoCambio)||1;
+
+  // Orígenes disponibles para el select
+  var origenesDisp = [...new Set(DB.movimientos.filter(function(m){return m.tipo==='Entrada';}).map(function(m){return (m.origen||'Sin origen').trim();}))].sort();
+
+  var h = '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Desde</label>'+
+      '<input id="reo-desde" type="date" value="'+fDesde+'" onchange="reporteEntradasPorOrigen()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Hasta</label>'+
+      '<input id="reo-hasta" type="date" value="'+fHasta+'" onchange="reporteEntradasPorOrigen()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Componente</label>'+
+      '<input id="reo-comp" value="'+(fComp||'')+'" placeholder="Filtrar por componente..." onchange="reporteEntradasPorOrigen()" '+
+      'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Origen</label>'+
+      '<select id="reo-origen" onchange="reporteEntradasPorOrigen()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
+        '<option value="">Todos los orígenes</option>'+
+        origenesDisp.map(function(o){return '<option value="'+o+'"'+(o===fOrigen?' selected':'')+'>'+o+'</option>';}).join('')+
+      '</select></div>'+
+    '<button class="btn btn-sm" onclick="limpiarFiltrosREO()">✕ Limpiar</button>'+
+  '</div>';
+
+  if(!entradas.length){
+    h += '<div class="empty">Sin entradas en el período seleccionado.</div>';
+    reporteContainer('📥 Entradas por origen', h);
+    return;
+  }
+
+  var totalMov = entradas.length;
+  var totalValor = entradas.reduce(function(a,m){
+    var comp = DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{};
+    return a + (parseFloat(m.cant)||0)*(parseFloat(comp.costo||comp.precio)||0);
+  },0);
+
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">'+
+    '<div class="stat"><div class="stat-n">'+totalMov+'</div><div class="stat-l">Movimientos</div></div>'+
+    '<div class="stat"><div class="stat-n">'+origenesOrdenados.length+'</div><div class="stat-l">Orígenes distintos</div></div>'+
+    '<div class="stat"><div class="stat-n green">$'+Math.round(totalValor).toLocaleString('es-AR')+'</div><div class="stat-l">Valor total</div></div>'+
+  '</div>';
+
+  origenesOrdenados.forEach(function(ori){
+    var g = grupos[ori];
+    var pct = totalValor > 0 ? Math.round(g.totalValor/totalValor*100) : 0;
+
+    h += '<div class="card" style="margin-bottom:10px">'+
+      '<div class="ch">'+
+        '<div class="ct">'+ori+'</div>'+
+        '<div style="display:flex;gap:10px;align-items:center;font-size:12px">'+
+          '<span style="color:var(--text2)">'+g.movimientos.length+' mov.</span>'+
+          '<span style="font-weight:700;color:var(--green)">$'+Math.round(g.totalValor).toLocaleString('es-AR')+'</span>'+
+          (tc>1?'<span style="color:var(--text2);font-size:11px">U$S '+(g.totalValor/tc).toFixed(0)+'</span>':'')+
+          '<span style="color:var(--text2);font-size:11px">'+pct+'% del total</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="card-body">'+
+      '<div style="background:var(--surface2);border-radius:3px;height:4px;margin-bottom:10px;overflow:hidden">'+
+        '<div style="height:100%;background:var(--green);width:'+pct+'%"></div>'+
+      '</div>'+
+      '<table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr style="background:var(--surface2)">'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:left">Fecha</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:left">Código</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:left">Componente</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:center">Cant.</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:right">Precio unit.</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:right">Valor $</th>'+
+        '<th style="padding:5px 10px;font-size:10px;text-align:left">Referencia</th>'+
+      '</tr></thead><tbody>'+
+      g.movimientos.map(function(item){
+        return '<tr style="border-bottom:1px solid var(--border)">'+
+          '<td style="padding:5px 10px;font-size:11px">'+item.m.fecha+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px;font-family:monospace">'+(item.comp.codigo||'—')+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px">'+(item.comp.desc||'—')+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px;text-align:center;font-weight:700">'+item.m.cant+(item.comp.unidad?' '+item.comp.unidad:'')+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px;text-align:right">'+(item.m.precio?'$'+Math.round(item.m.precio).toLocaleString('es-AR'):'—')+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px;text-align:right">'+(item.valor>0?'$'+Math.round(item.valor).toLocaleString('es-AR'):'—')+'</td>'+
+          '<td style="padding:5px 10px;font-size:11px">'+(item.m.ref||'—')+'</td>'+
+        '</tr>';
+      }).join('')+
+      '</tbody></table></div></div>';
+  });
+
+  reporteContainer('📥 Entradas por origen', h);
+}
+
+function limpiarFiltrosREO(){
+  var d=document.getElementById('reo-desde');  if(d) d.value='';
+  var h=document.getElementById('reo-hasta');  if(h) h.value='';
+  var c=document.getElementById('reo-comp');   if(c) c.value='';
+  var o=document.getElementById('reo-origen'); if(o) o.value='';
+  reporteEntradasPorOrigen();
 }
 
 // Limpiar filtros del reporte salidas por motivo
