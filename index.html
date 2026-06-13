@@ -521,6 +521,9 @@ function toggleNav(el){
         <select id="mov-motivo-filter" onchange="renderMovimientos()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">
           <option value="">Todos los motivos</option>
         </select>
+        <select id="mov-origen-filter" onchange="renderMovimientos()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px">
+          <option value="">Todos los orígenes</option>
+        </select>
         <button class="btn btn-p" onclick="modalMovimiento('Entrada')">📥 Entrada</button>
         <button class="btn" onclick="modalMovimiento('Salida manual')">📤 Salida</button>
         <button class="btn btn-g" onclick="modalMovimiento('Salida instalación')">🔧 Instalación</button>
@@ -529,7 +532,7 @@ function toggleNav(el){
         <div class="twrap">
           <table>
             <colgroup><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:17%"><col style="width:6%"><col style="width:5%"><col style="width:7%"><col style="width:11%"><col style="width:11%"><col style="width:9%"></colgroup>
-            <thead><tr><th>Fecha</th><th>Tipo</th><th>Código</th><th>Componente</th><th>Cant.</th><th style="text-align:center">Estado</th><th>Precio $</th><th>Precio U$S</th><th>Referencia</th><th>Cliente / Nota</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Código</th><th>Componente</th><th>Cant.</th><th style="text-align:center">Estado</th><th>Precio $</th><th>Precio U$S</th><th>Referencia</th><th>Cliente / Nota</th><th>Origen</th><th></th></tr></thead>
             <tbody id="tbody-mov"></tbody>
           </table>
         </div>
@@ -601,6 +604,7 @@ function toggleNav(el){
           <button class="btn" onclick="reporteVencimientos()">⏰ Vencimientos de garantía</button>
           <button class="btn" onclick="reporteHistorialPres()">📋 Historial de presupuestos</button>
           <button class="btn" onclick="reporteSalidasPorMotivo()">📤 Salidas por motivo</button>
+          <button class="btn" onclick="reporteEntradasPorOrigen()">📥 Entradas por origen</button>
         </div>
       </div>
       <div id="reporte-resultado"></div>
