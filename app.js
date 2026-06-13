@@ -800,13 +800,13 @@ function agregarMatMant(){
   var cant=prompt('Cantidad:','1');
   if(!cant) return;
   var sel=document.createElement('select');
-  sel.innerHTML='<option value="">— seleccionar —</option>'+compSel;
+  sel.innerHTML='<option value="">-- seleccionar --</option>'+compSel;
   // Use a simple approach - ask for component by showing a mini modal
   openModal('Agregar material',
     '<div class="fg2">'+
       '<div class="fg full"><label>Componente</label>'+
         '<select id="am-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar —</option>'+compSel+
+          '<option value="">-- seleccionar --</option>'+compSel+
         '</select></div>'+
       '<div class="fg"><label>Cantidad</label><input id="am-cant" type="number" min="1" value="1"></div>'+
     '</div>',
@@ -1956,7 +1956,7 @@ function modalMovimiento(tipo, preselCid){
     '<div class="fg2">'+
       '<div class="fg"><label>Componente *</label>'+
         '<select id="mv-cid" onchange="mostrarPrecioComp()" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar —</option>'+compOpts+
+          '<option value="">-- seleccionar --</option>'+compOpts+
         '</select></div>'+
       '<div class="fg"><label>Cantidad *</label><input id="mv-cant" type="number" min="1" value="1"></div>'+
       '<div class="fg"><label>Fecha</label><input id="mv-fecha" type="date" value="'+today()+'"></div>'+
@@ -1974,14 +1974,14 @@ function modalMovimiento(tipo, preselCid){
         '</div>'+
         '<div class="fg"><label>Estado material *</label>'+
           '<select id="mv-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-            '<option value="N" selected>N — Nuevo</option>'+
-            '<option value="R">R — Recuperado</option>'+
+            '<option value="N" selected>N -- Nuevo</option>'+
+            '<option value="R">R -- Recuperado</option>'+
           '</select></div>'
       :
         (esInstalacion?
           '<div class="fg"><label>Cliente *</label>'+
             '<select id="mv-cli" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-              '<option value="">— seleccionar cliente —</option>'+cliOpts+
+              '<option value="">-- seleccionar cliente --</option>'+cliOpts+
             '</select></div>'
           :'')+
         '<div class="fg"><label>Ubicación</label><input id="mv-ubic" list="dl-mv-ubic" placeholder="Ej: Estante A">'+stockDatalist("mv-ubic","",'ubicaciones')+'</div>'+
@@ -1995,8 +1995,8 @@ function modalMovimiento(tipo, preselCid){
         '</div>'+
         '<div class="fg"><label>Estado material</label>'+
           '<select id="mv-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-            '<option value="N" selected>N — Nuevo</option>'+
-            '<option value="R">R — Recuperado</option>'+
+            '<option value="N" selected>N -- Nuevo</option>'+
+            '<option value="R">R -- Recuperado</option>'+
           '</select></div>'
       )+
     '</div>',
@@ -2425,13 +2425,13 @@ function modalOrden(){
     '<div id="orden-items"><div class="fg2" style="margin-bottom:8px" id="orden-item-0">'+
       '<div class="fg"><label>Componente *</label>'+
         '<select class="ord-cid" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar —</option>'+compOpts+'</select></div>'+
+          '<option value="">-- seleccionar --</option>'+compOpts+'</select></div>'+
       '<div class="fg"><label>Cantidad *</label><input class="ord-cant" type="number" min="1" value="1"></div>'+
     '</div></div>'+
     '<button class="btn btn-sm" onclick="addOrdenItem()" style="margin-bottom:10px">➕ Agregar ítem</button>'+
     '<div class="fg"><label>Proveedor</label>'+
       '<select id="ord-prov" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-        '<option value="">— sin vincular —</option>'+
+        '<option value="">-- sin vincular --</option>'+
         [...DB.proveedores].sort(function(a,b){return (a.empresa||'').localeCompare(b.empresa||'');}).map(function(p){return '<option value="'+p.empresa+'">'+p.empresa+'</option>';}).join('')+
       '</select></div>'+
     '<div class="fg"><label>Observaciones</label><input id="ord-obs" placeholder="Notas..."></div>',
@@ -2460,7 +2460,7 @@ function addOrdenItem(){
   div.className='fg2';div.style.marginBottom='8px';
   div.innerHTML='<div class="fg"><label>Componente *</label>'+
     '<select class="ord-cid" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-    '<option value="">— seleccionar —</option>'+compOpts+'</select></div>'+
+    '<option value="">-- seleccionar --</option>'+compOpts+'</select></div>'+
     '<div class="fg"><label>Cantidad *</label><input class="ord-cant" type="number" min="1" value="1"></div>';
   cont.appendChild(div);
 }
@@ -3934,7 +3934,7 @@ function modalOrdenDesdeProveedor(provId){
     '<div id="orden-items-pv"><div class="fg2" style="margin-bottom:8px">'+
       '<div class="fg"><label>Componente *</label>'+
         '<select class="ord-cid" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar —</option>'+compOpts+'</select></div>'+
+          '<option value="">-- seleccionar --</option>'+compOpts+'</select></div>'+
       '<div class="fg"><label>Cantidad *</label><input class="ord-cant" type="number" min="1" value="1"></div>'+
     '</div></div>'+
     '<button class="btn btn-sm" onclick="addOrdenItemPv()" style="margin-bottom:10px">➕ Agregar ítem</button>'+
@@ -3962,7 +3962,7 @@ function addOrdenItemPv(){
   div.className='fg2'; div.style.marginBottom='8px';
   div.innerHTML='<div class="fg"><label>Componente *</label>'+
     '<select class="ord-cid" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-    '<option value="">— seleccionar —</option>'+compOpts+'</select></div>'+
+    '<option value="">-- seleccionar --</option>'+compOpts+'</select></div>'+
     '<div class="fg"><label>Cantidad *</label><input class="ord-cant" type="number" min="1" value="1"></div>';
   cont.appendChild(div);
 }
@@ -4055,7 +4055,7 @@ function modalGestion(){
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
     '<div class="fg" style="grid-column:1/-1"><label>Presupuesto aprobado *</label>'+
       '<select id="gest-pres" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%" onchange="cargarDatosGestion()">'+
-      '<option value="">— seleccionar —</option>'+presOpts+'</select></div>'+
+      '<option value="">-- seleccionar --</option>'+presOpts+'</select></div>'+
     '<div class="fg"><label>Monto del sistema ($)</label><input id="gest-monto" type="number" min="0" value="0"></div>'+
     '<div class="fg"><label>Forma de pago</label><input id="gest-fp" value=""></div>'+
     '<div class="fg"><label>Entrega prometida</label><input id="gest-eprom" type="date" value="'+today()+'"></div>'+
@@ -4504,7 +4504,7 @@ function modalFondo(id){
     '<div class="fg"><label>Descripción</label><input id="fo-desc" value="'+(f?f.desc||'':'')+'" placeholder="Detalle opcional"></div>'+
     '<div class="fg" style="grid-column:1/-1"><label>Cliente / Proveedor</label>'+
       '<select id="fo-vinculo" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-        '<option value="">— sin vincular —</option>'+
+        '<option value="">-- sin vincular --</option>'+
         '<optgroup label="Clientes">'+DB.clientes.filter(function(c){return c.estado==='Activo';}).map(function(c){return '<option value="cli:'+c.id+'"'+(f&&f.vinculo==='cli:'+c.id?' selected':'')+'>'+c.nombre+'</option>';}).join('')+'</optgroup>'+
         '<optgroup label="Proveedores">'+[...DB.proveedores].sort(function(a,b){return (a.empresa||'').localeCompare(b.empresa||'');}).map(function(p){return '<option value="prov:'+p.id+'"'+(f&&f.vinculo==='prov:'+p.id?' selected':'')+'>'+p.empresa+'</option>';}).join('')+'</optgroup>'+
       '</select></div>'+
@@ -5081,7 +5081,7 @@ function modalNuevaOT(){
         '</select></div>'+
       '<div class="fg" id="ot-pres-wrap" style="display:none"><label>Presupuesto / Cliente</label>'+
         '<select id="ot-presupuesto" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar —</option>'+
+          '<option value="">-- seleccionar --</option>'+
           presList.map(function(p){return '<option value="'+p.id+'">'+presNum(p)+' — '+p.nombre+'</option>';}).join('')+
         '</select></div>'+
       '<div class="fg"><label>Modelo</label>'+
@@ -5389,7 +5389,7 @@ function agregarMaterialExtra(otId){
     '<div class="fg2">'+
       '<div class="fg full"><label>Componente</label>'+
         '<select id="me-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar —</option>'+compSel+
+          '<option value="">-- seleccionar --</option>'+compSel+
         '</select></div>'+
       '<div class="fg"><label>Cantidad</label><input id="me-cant" type="number" min="1" value="1"></div>'+
       '<div class="fg"><label>Motivo</label><input id="me-motivo" placeholder="Motivo del consumo adicional..."></div>'+
@@ -5517,7 +5517,7 @@ function modalKitItem(idx){
     '<div class="fg2">'+
       '<div class="fg full"><label>Componente</label>'+
         '<select id="kit-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar componente —</option>'+compSel+
+          '<option value="">-- seleccionar componente --</option>'+compSel+
         '</select></div>'+
       '<div class="fg"><label>Cantidad</label>'+
         '<input id="kit-cant" type="number" min="1" value="'+(item?item.cant:1)+'"></div>'+
@@ -5860,7 +5860,7 @@ function agregarMatInst(piId){
     '<div class="fg2">'+
       '<div class="fg full"><label>Componente</label>'+
         '<select id="mi-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar —</option>'+compSel+
+          '<option value="">-- seleccionar --</option>'+compSel+
         '</select></div>'+
       '<div class="fg"><label>Cantidad</label><input id="mi-cant" type="number" min="1" value="1"></div>'+
     '</div>',
@@ -5997,7 +5997,7 @@ function modalKitInstItem(idx){
     '<div class="fg2">'+
       '<div class="fg full"><label>Componente (área Instalación)</label>'+
         '<select id="ki-comp" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
-          '<option value="">— seleccionar —</option>'+compSel+
+          '<option value="">-- seleccionar --</option>'+compSel+
         '</select></div>'+
       '<div class="fg"><label>Cantidad</label>'+
         '<input id="ki-cant" type="number" min="1" value="'+(item?item.cant:1)+'"></div>'+
@@ -6457,7 +6457,7 @@ function modalNuevoMant(){
       '<div class="fg"><label>Técnico</label><input id="mn-te" placeholder="Nombre del técnico"></div>'+
       '<div class="fg full"><label>Cliente *</label>'+
         '<select id="mn-cli" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%" onchange="onChangeMantCliente()">'+
-          '<option value="">— seleccionar cliente —</option>'+clienteOpts+
+          '<option value="">-- seleccionar cliente --</option>'+clienteOpts+
         '</select></div>'+
       '<div class="fg"><label>N° Serie sistema</label><input id="mn-ns" placeholder="VSS-K2605-02-001"></div>'+
       '<div class="fg"><label>Tipo *</label>'+
