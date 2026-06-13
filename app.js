@@ -1868,9 +1868,20 @@ function movTipoPill(t){
 function renderMovimientos(){
   const q=(document.getElementById('q-mov').value||'').toLowerCase();
   const ft=document.getElementById('mov-tipo-filter').value;
+  const fm=document.getElementById('mov-motivo-filter')?document.getElementById('mov-motivo-filter').value:'';
+  // Poblar select de motivos con valores únicos del historial
+  var selMot=document.getElementById('mov-motivo-filter');
+  if(selMot){
+    var motivosUsados=[...new Set(DB.movimientos.filter(function(m){return m.tipo==='Salida manual'&&m.nota;}).map(function(m){return m.nota.trim();}))].sort();
+    var curVal=selMot.value;
+    selMot.innerHTML='<option value="">Todos los motivos</option>'+motivosUsados.map(function(mot){return '<option value="'+mot+'"'+(mot===curVal?' selected':'')+'>'+mot+'</option>';}).join('');
+  }
   const list=DB.movimientos.filter(function(m){
     const comp=DB.componentes.find(function(c){return c.id===(m.cid||m.compId);})||{desc:'—',codigo:'',unidad:''};
-    return(!q||(comp.desc+comp.codigo+(m.ref||'')+(m.nota||'')).toLowerCase().includes(q))&&(!ft||m.tipo===ft);
+    var matchQ=!q||(comp.desc+comp.codigo+(m.ref||'')+(m.nota||'')).toLowerCase().includes(q);
+    var matchT=!ft||m.tipo===ft;
+    var matchM=!fm||(m.nota||'').trim()===fm;
+    return matchQ&&matchT&&matchM;
   }).sort(function(a,b){
     var ca=DB.componentes.find(function(c){return c.id===(a.cid||a.compId);})||{};
     var cb=DB.componentes.find(function(c){return c.id===(b.cid||b.compId);})||{};
@@ -2022,9 +2033,10 @@ function toggleMotivoOtro(){
 
 // Limpiar filtros del reporte salidas por motivo
 function limpiarFiltrosSM(){
-  var d=document.getElementById('rsm-desde'); if(d) d.value='';
-  var h=document.getElementById('rsm-hasta'); if(h) h.value='';
-  var c=document.getElementById('rsm-comp');  if(c) c.value='';
+  var d=document.getElementById('rsm-desde');  if(d) d.value='';
+  var h=document.getElementById('rsm-hasta');  if(h) h.value='';
+  var c=document.getElementById('rsm-comp');   if(c) c.value='';
+  var m=document.getElementById('rsm-motivo'); if(m) m.value='';
   reporteSalidasPorMotivo();
 }
 
@@ -2034,9 +2046,10 @@ function reporteSalidasPorMotivo(){
   var primerMes = hoy.slice(0,7)+'-01';
 
   // Leer filtros si ya están en DOM
-  var fDesde = document.getElementById('rsm-desde') ? document.getElementById('rsm-desde').value : primerMes;
-  var fHasta = document.getElementById('rsm-hasta') ? document.getElementById('rsm-hasta').value : hoy;
-  var fComp  = document.getElementById('rsm-comp')  ? document.getElementById('rsm-comp').value.toLowerCase()  : '';
+  var fDesde  = document.getElementById('rsm-desde')  ? document.getElementById('rsm-desde').value  : primerMes;
+  var fHasta  = document.getElementById('rsm-hasta')  ? document.getElementById('rsm-hasta').value  : hoy;
+  var fComp   = document.getElementById('rsm-comp')   ? document.getElementById('rsm-comp').value.toLowerCase()   : '';
+  var fMotivo = document.getElementById('rsm-motivo') ? document.getElementById('rsm-motivo').value : '';
 
   // Solo movimientos de Salida manual en rango
   var salidas = DB.movimientos.filter(function(m){
@@ -2047,6 +2060,7 @@ function reporteSalidasPorMotivo(){
       var comp = DB.componentes.find(function(c){return c.id===(m.cid||m.compId);});
       if(!comp || !(comp.desc+comp.codigo).toLowerCase().includes(fComp)) return false;
     }
+    if(fMotivo && (m.nota||'').trim() !== fMotivo) return false;
     return true;
   });
 
@@ -2078,6 +2092,14 @@ function reporteSalidasPorMotivo(){
     '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Componente</label>'+
       '<input id="rsm-comp" value="'+(fComp||'')+'" placeholder="Filtrar por componente..." onchange="reporteSalidasPorMotivo()" '+
       'style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)"></div>'+
+    '<div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Motivo</label>'+
+      '<select id="rsm-motivo" onchange="reporteSalidasPorMotivo()" style="padding:5px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;background:var(--surface)">'+
+        '<option value="">Todos los motivos</option>'+
+        (function(){
+          var usados=[...new Set(DB.movimientos.filter(function(x){return x.tipo==='Salida manual'&&x.nota;}).map(function(x){return x.nota.trim();}))].sort();
+          return usados.map(function(mot){return '<option value="'+mot+'"'+(mot===fMotivo?' selected':'')+'>'+mot+'</option>';}).join('');
+        })()+
+      '</select></div>'+
     '<button class="btn btn-sm" onclick="limpiarFiltrosSM()">✕ Limpiar</button>'+
   '</div>';
 
