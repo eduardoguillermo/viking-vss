@@ -3027,7 +3027,7 @@ function reporteStockCritico(){
 
 function reporteInventario(){
   const tc=(DB.config&&DB.config.tipoCambio)||1;
-  const areas=['Fábrica','Mantenimiento','Instalacion','Ambas'];
+  const areas=['Fábrica','Mantenimiento','Instalacion'];
   var h='<table><thead><tr><th>Área</th><th>Componentes</th><th>Valor $</th><th>Valor U$S</th></tr></thead><tbody>';
   var totalVal=0;
   areas.forEach(function(area){
