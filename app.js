@@ -1480,7 +1480,7 @@ function pdfStock(){
       '<td>'+c.desc+'</td>'+
       '<td>'+(c.categoria||'—')+'</td>'+
       '<td>'+(c.area||'—')+'</td>'+
-      '<td>'+(c.ubicacion||'—')+'</td>'+
+      '<td>'+(c.ubicacion?(c.nroCajon?c.ubicacion+' / '+c.nroCajon:c.ubicacion):(c.nroCajon||'—'))+'</td>'+
       '<td style="text-align:center;font-weight:700;color:'+(critico?'#B71C1C':'#222')+'">'+qty+' '+(c.unidad||'')+'</td>'+
       '<td style="text-align:center">'+(c.min||0)+'</td>'+
       '<td style="text-align:right">$'+Math.round(parseFloat(c.precio)||0).toLocaleString('es-AR')+'</td>'+
@@ -1573,7 +1573,7 @@ function renderStock(){
       '<td>'+c.categoria+'</td>'+
       '<td style="font-weight:700;font-size:13px;color:'+(cant<=0?'var(--red)':cant<=(parseFloat(c.min)||0)?'var(--amber)':'var(--green)')+'">'+cant+' '+c.unidad+'</td>'+
       '<td>'+(c.min||0)+' '+c.unidad+'</td>'+
-      '<td>'+(c.ubicacion||'—')+'</td>'+
+      '<td>'+(c.ubicacion?(c.nroCajon?c.ubicacion+' / '+c.nroCajon:c.ubicacion):(c.nroCajon||'—'))+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
       '<td>'+(c.area||'—')+'</td>'+
       '<td style="text-align:center">'+eMat+'</td>'+
@@ -1584,7 +1584,7 @@ function renderStock(){
   }).join('');
 
   // Update sort indicators
-  var scols = {codigo:'Código',desc:'Descripción',categoria:'Categoría',cant:'Cantidad',area:'Área',ubicacion:'Ubicación'};
+  var scols = {codigo:'Código',desc:'Descripción',categoria:'Categoría',cant:'Cantidad',area:'Área',ubicacion:'Cajonera / Cajón'};
   Object.keys(scols).forEach(function(col){
     var th = document.getElementById('sth-'+col);
     if(!th) return;
@@ -1649,7 +1649,7 @@ function renderCatalogo(){
       '<td>'+(c.min||0)+'</td>'+
       '<td style="font-weight:700;color:'+stockColor+'">'+stockIcon+' '+qty+'</td>'+
       '<td><span class="pill '+(c.area==='Mantenimiento'?'p-b':c.area==='Instalacion'?'p-a':c.area==='Ambas'?'p-p':'p-g')+'">'+(c.area||'Fábrica')+'</span></td>'+
-      '<td>'+(c.ubicacion||'—')+'</td>'+
+      '<td>'+(c.ubicacion?(c.nroCajon?c.ubicacion+' / '+c.nroCajon:c.ubicacion):(c.nroCajon||'—'))+'</td>'+
       '<td>'+(c.proveedor||'—')+'</td>'+
       '<td style="text-align:center">'+(c.estadoMat==='R'?'<span class="pill p-a" title="Recuperado">R</span>':'<span class="pill p-g" title="Nuevo">N</span>')+'</td>'+
       '<td style="display:flex;gap:3px">'+
@@ -1661,7 +1661,7 @@ function renderCatalogo(){
   }).join('');
 
   // Update sort indicators on headers
-  var cols = {codigo:'Código',desc:'Descripción',categoria:'Categoría',stock:'Stock',area:'Área',ubicacion:'Ubicación'};
+  var cols = {codigo:'Código',desc:'Descripción',categoria:'Categoría',stock:'Stock',area:'Área',ubicacion:'Cajonera / Cajón'};
   Object.keys(cols).forEach(function(col){
     var th = document.getElementById('th-'+col);
     if(!th) return;
@@ -1793,8 +1793,9 @@ function modalComponente(id){
         '<select id="cp-area" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
           ['Fábrica','Mantenimiento','Instalacion'].map(function(a){return '<option'+(c&&c.area===a?' selected':'')+'>'+a+'</option>';}).join('')+
         '</select></div>'+
-      '<div class="fg"><label>Ubicación</label><input id="cp-ubic" value="'+(c?c.ubicacion||'':'')+'" placeholder="Ej: Estante A, cajón 3" list="dl-cp-ubic">'+
+      '<div class="fg"><label>Cajonera</label><input id="cp-ubic" value="'+(c?c.ubicacion||'':'')+'" placeholder="Ej: Cajonera A" list="dl-cp-ubic">'+
       '<datalist id="dl-cp-ubic">'+(function(){var u=[...new Set(DB.componentes.filter(function(x){return x.ubicacion;}).map(function(x){return x.ubicacion;}))];return u.map(function(u){return '<option value="'+u+'">'+u+'</option>';}).join('');})()+'</datalist></div>'+
+      '<div class="fg"><label>Nro Cajón</label><input id="cp-nrocajon" value="'+(c?c.nroCajon||'':'')+'" placeholder="Ej: 3"></div>'+
       '<div class="fg"><label>Estado material</label>'+
         '<select id="cp-emat" style="padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;width:100%">'+
           '<option value="N"'+(c&&c.estadoMat==='N'?' selected':(!c?' selected':''))+'>N — Nuevo</option>'+
@@ -1824,6 +1825,7 @@ function modalComponente(id){
         c.area=document.getElementById('cp-area')?document.getElementById('cp-area').value:'Fábrica';
         c.proveedor=document.getElementById('cp-prov').value;
         c.ubicacion=document.getElementById('cp-ubic').value;
+        c.nroCajon=document.getElementById('cp-nrocajon')?document.getElementById('cp-nrocajon').value:'';
         c.estadoMat=document.getElementById('cp-emat')?document.getElementById('cp-emat').value:'N';
         c.notas=document.getElementById('cp-notas')?document.getElementById('cp-notas').value.trim():'';
       } else {
@@ -1841,6 +1843,7 @@ function modalComponente(id){
           area:document.getElementById('cp-area')?document.getElementById('cp-area').value:'Fábrica',
           proveedor:document.getElementById('cp-prov')?document.getElementById('cp-prov').value:'',
           ubicacion:document.getElementById('cp-ubic')?document.getElementById('cp-ubic').value:'',
+          nroCajon:document.getElementById('cp-nrocajon')?document.getElementById('cp-nrocajon').value:'',
           estadoMat:document.getElementById('cp-emat')?document.getElementById('cp-emat').value:'N',
           notas:document.getElementById('cp-notas')?document.getElementById('cp-notas').value.trim():''
         });
