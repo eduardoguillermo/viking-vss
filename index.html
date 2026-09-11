@@ -34,7 +34,7 @@ function toggleNav(el){
 <div class="topbar">
   <div class="brand">
     <div class="brand-icon">🛡️</div>
-    <div><div class="brand-name">Viking Security Systems</div><span class="brand-sub">Sistema Administrativo v2.0</span></div>
+    <div><div class="brand-name">Viking Security Systems</div><span class="brand-sub">Sistema Administrativo v2.1</span></div>
   </div>
   <div style="position:relative;flex:1;max-width:400px;margin:0 auto">
     <input id="global-search" type="text" placeholder="🔍 Buscar clientes, presupuestos, componentes..."
@@ -44,6 +44,7 @@ function toggleNav(el){
   </div>
   <div class="topbar-right">
     <span class="topbar-ctx" id="tctx"></span>
+    <button class="btn btn-sm" title="Ver el manual completo" onclick="window.open('instructivo.html','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')">❓ Ayuda</button>
     <button class="install-btn" id="install-btn" onclick="instalarPWA()">📲 Instalar app</button>
   </div>
 </div>
@@ -116,7 +117,10 @@ function toggleNav(el){
 
 <div class="main">
   <div class="page-head">
-    <div class="page-title" id="ptitle">Clientes</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="page-title" id="ptitle">Clientes</div>
+      <button onclick="abrirAyudaPanel()" title="Ayuda de esta sección" style="background:#B71C1C;border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.3)">?</button>
+    </div>
     <div class="page-acts" id="pacts"></div>
   </div>
   <div class="content">
