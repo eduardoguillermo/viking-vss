@@ -130,7 +130,16 @@ function save(){ invalidarStockCache(); localStorage.setItem(SKEY,JSON.stringify
 let curCid=null, curSub='datos';
 const PANELS=['clientes','alta','detalle','versiones','tipos','backup','presupuestos','stock','catalogo','movimientos','ordenes','config','reportes','proveedores','gestion','fondos','fabricacion','kit','instalaciones','kitinst','actas','mantenimientos'];
 
+// Mapa de panel -> ancla en instructivo.html (usado por el botón de ayuda contextual "?")
+const ANCLAS_AYUDA={clientes:'clientes',alta:'clientes',detalle:'ficha',versiones:'versiones',tipos:'tipos',backup:'backup',presupuestos:'presupuestos',stock:'stock',catalogo:'stock',movimientos:'movimientos',ordenes:'ordenes',config:'config',reportes:'reportes',proveedores:'proveedores',gestion:'gestion',fondos:'fondos',fabricacion:'fabricacion',kit:'kit',instalaciones:'instalaciones',kitinst:'kitinst',actas:'actas',mantenimientos:'mantenimientos'};
+var _panelActual='clientes';
+function abrirAyudaPanel(){
+  var ancla=ANCLAS_AYUDA[_panelActual]||'intro';
+  window.open('instructivo.html#'+ancla,'_blank','width=1100,height=750,resizable=yes,scrollbars=yes');
+}
+
 function goTo(p){
+  _panelActual=p;
   PANELS.forEach(x=>{
     const panel=document.getElementById('panel-'+x);
     if(panel) panel.classList.toggle('on',x===p);
