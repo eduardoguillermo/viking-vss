@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viking Security Systems · Manual de Usuario</title>
+<style>
+  :root {
+    --brand: #B71C1C;
+    --brand-dk: #7F0000;
+    --brand-light: #FDECEA;
+    --green: #1B5E20;
+    --green-light: #E8F5E9;
+    --amber: #7B4F00;
+    --amber-light: #FFF8E1;
+    --red: #B71C1C;
+    --red-light: #FFEBEE;
+    --blue: #0D47A1;
+    --blue-light: #E3F2FD;
+    --purple: #4A148C;
+    --purple-light: #F3E5F5;
+    --text: #222;
+    --muted: #666;
+    --border: #DDD;
+    --bg: #F7F7F7;
+    --card: #ffffff;
+    --sidebar-w: 260px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
+
+  /* Layout */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: var(--sidebar-w);
+    background: #1a1a1a;
+    color: #ccc;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 0 0 32px 0;
+    z-index: 100;
+  }
+  .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid #333; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+  .sidebar-logo .ico { font-size: 22px; }
+  .sidebar-logo h1 { font-size: 15px; font-weight: 700; color: white; }
+  .sidebar-logo p { font-size: 10.5px; color: #888; margin-top: 1px; }
+  .sidebar a {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 20px;
+    color: #aaa;
+    text-decoration: none;
+    font-size: 12.5px;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+  }
+  .sidebar a:hover { color: white; background: #111; border-left-color: var(--brand); }
+  .sidebar .section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+    color: #555; padding: 16px 20px 4px;
+  }
+  .content { margin-left: var(--sidebar-w); flex: 1; max-width: 860px; padding: 40px 48px 80px; }
+
+  .section { margin-bottom: 56px; scroll-margin-top: 24px; }
+  .section-header { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+  .section-icon { font-size: 26px; }
+  .section-title { font-size: 20px; font-weight: 700; color: var(--text); }
+  .section-subtitle { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  h2 { font-size: 16px; font-weight: 700; margin: 24px 0 8px; color: var(--text); }
+  h3 { font-size: 14px; font-weight: 600; margin: 16px 0 6px; color: var(--text); }
+  p { margin-bottom: 10px; color: #374151; }
+  ul, ol { padding-left: 22px; margin-bottom: 12px; }
+  li { margin-bottom: 5px; color: #374151; }
+  b { color: var(--text); }
+
+  .note { background: var(--amber-light); border-left: 4px solid var(--amber); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #5c3d00; }
+  .tip { background: var(--green-light); border-left: 4px solid var(--green); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #0f3d13; }
+  .warning { background: var(--red-light); border-left: 4px solid var(--red); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #7f1d1d; }
+  .info { background: var(--blue-light); border-left: 4px solid var(--blue); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #0c2f5e; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12.5px; }
+  th { background: #f1f1f1; padding: 7px 11px; text-align: left; font-weight: 700; border: 1px solid var(--border); }
+  td { padding: 7px 11px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) { background: #fafafa; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; margin-left: 6px; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-blue  { background: #dbeafe; color: #1e40af; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .badge-red   { background: #fee2e2; color: #991b1b; }
+  .badge-purple{ background: #f3e8ff; color: #6b21a8; }
+
+  code { background: #f1f1f1; border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'Courier New', monospace; font-size: 12px; color: var(--brand-dk); }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; }
+  .card-title { font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: #4b5563; }
+
+  hr.div { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  .hero { background: linear-gradient(135deg, #1a1a1a 0%, #3a0d0d 100%); color: white; padding: 40px 48px; margin: -40px -48px 44px; }
+  .hero h1 { font-size: 26px; font-weight: 800; }
+  .hero p { color: #ccc; margin-top: 6px; font-size: 14.5px; }
+  .hero-badges { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* Changelog */
+  .changelog-details { margin-top: 4px; }
+  .changelog-summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--brand); padding: 8px 0; list-style: none; user-select: none; }
+  .changelog-summary::-webkit-details-marker { display: none; }
+  .changelog-summary::before { content: "▸ "; display: inline-block; transition: transform .15s; }
+  .changelog-details[open] .changelog-summary::before { transform: rotate(90deg); }
+  .changelog-entry { border-left: 3px solid var(--brand); padding: 4px 0 4px 16px; margin: 16px 0 20px; }
+  .changelog-version { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .v-num { font-weight: 700; font-size: 13px; color: var(--text); }
+  .changelog-tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .tag-feature { background: #dcfce7; color: #166534; }
+  .tag-fix { background: #fef3c7; color: #92400e; }
+  .changelog-list { margin: 0; padding-left: 20px; font-size: 13px; color: #4b5563; line-height: 1.7; }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .content { margin-left: 0; padding: 24px 20px 60px; }
+    .hero { margin: -24px -20px 32px; padding: 28px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+<nav class="sidebar">
+  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.0</p></div></div>
+
+  <div class="section-label">Introducción</div>
+  <a href="#intro">🏠 ¿Qué es esta app?</a>
+  <a href="#busqueda">🔍 Búsqueda global</a>
+
+  <div class="section-label">Comercial</div>
+  <a href="#presupuestos">📄 Presupuestos</a>
+  <a href="#gestion">💰 Gestión económica</a>
+  <a href="#actas">📋 Actas de conformidad</a>
+
+  <div class="section-label">Clientes</div>
+  <a href="#clientes">🔍 Listado y alta</a>
+  <a href="#ficha">📋 Ficha del cliente</a>
+
+  <div class="section-label">Finanzas</div>
+  <a href="#fondos">🏦 Movimiento de fondos</a>
+
+  <div class="section-label">Logística</div>
+  <a href="#stock">📦 Stock y catálogo</a>
+  <a href="#movimientos">🔄 Movimientos</a>
+  <a href="#ordenes">🛒 Órdenes de compra</a>
+  <a href="#proveedores">🏭 Proveedores</a>
+
+  <div class="section-label">Fabricación</div>
+  <a href="#fabricacion">🔧 Órdenes de trabajo</a>
+  <a href="#kit">📋 Kit de fabricación</a>
+
+  <div class="section-label">Instalaciones</div>
+  <a href="#instalaciones">📋 Pedidos de instalación</a>
+  <a href="#kitinst">🧰 Kit base de instalación</a>
+
+  <div class="section-label">Mantenimiento</div>
+  <a href="#mantenimientos">🛠️ Registros</a>
+
+  <div class="section-label">Análisis</div>
+  <a href="#reportes">📊 Reportes</a>
+
+  <div class="section-label">Configuración y datos</div>
+  <a href="#config">🏢 Mi empresa</a>
+  <a href="#versiones">🔄 Versiones SW</a>
+  <a href="#tipos">📡 Tipos de sensor</a>
+  <a href="#backup">💾 Backup / Restaurar</a>
+  <a href="#changelog">🧾 Historial de cambios</a>
+</nav>
+
+<main class="content">
+
+  <div class="hero">
+    <h1>🛡️ Viking Security Systems</h1>
+    <p>Manual del sistema administrativo — ciclo completo del negocio, de presupuesto a mantenimiento</p>
+    <div class="hero-badges">
+      <span class="badge badge-red">✓ v2.0</span>
+      <span class="badge badge-blue">✓ Sin servidor</span>
+      <span class="badge badge-amber">✓ Datos locales</span>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <section class="section" id="intro">
+    <div class="section-header">
+      <span class="section-icon">🏠</span>
+      <div><div class="section-title">¿Qué es esta app?</div><div class="section-subtitle">Descripción general</div></div>
+    </div>
+    <p>Es el sistema administrativo de Viking Security Systems: cubre todo el ciclo del negocio, desde el relevamiento y presupuesto de un cliente nuevo hasta la fabricación del equipo, su instalación y el mantenimiento posterior. Es una PWA vanilla JS sin servidor — todo vive en el navegador (<code>localStorage</code>) y se respalda manualmente en JSON.</p>
+    <p>El menú lateral agrupa los módulos por área: <b>Comercial</b> (presupuestos, gestión económica, actas), <b>Clientes</b>, <b>Finanzas</b>, <b>Logística</b> (stock y compras), <b>Fabricación</b>, <b>Instalaciones</b>, <b>Mantenimiento</b>, <b>Análisis</b> (reportes) y <b>Configuración/Datos</b>.</p>
+    <div class="tip">💡 El buscador global de la barra superior ("🔍 Buscar clientes, presupuestos, componentes...") busca en simultáneo por todos esos módulos — es el atajo más rápido para llegar a una ficha puntual sin navegar por el menú.</div>
+  </section>
+
+  <!-- BUSQUEDA -->
+  <section class="section" id="busqueda">
+    <div class="section-header">
+      <span class="section-icon">🔍</span>
+      <div><div class="section-title">Búsqueda global</div><div class="section-subtitle">Un solo cuadro para todo el sistema</div></div>
+    </div>
+    <p>Escribí en la barra superior y aparece un desplegable con coincidencias de clientes, presupuestos y componentes del catálogo, cada uno con acceso directo a su ficha.</p>
+  </section>
+
+  <!-- PRESUPUESTOS -->
+  <section class="section" id="presupuestos">
+    <div class="section-header">
+      <span class="section-icon">📄</span>
+      <div><div class="section-title">Presupuestos</div><div class="section-subtitle">Relevamientos y cotizaciones, de borrador a cliente</div></div>
+    </div>
+    <p>Cada fila es una cotización con nombre, dirección, modelo Zpro, técnico y estado (<b>Borrador → Enviado → Aprobado / Rechazado</b>). Se puede cargar a mano ("➕ Nuevo manual") o importar desde la app móvil de relevamiento en campo.</p>
+
+    <h2>Importar relevamiento</h2>
+    <p>"📥 Importar relevamiento" lee el archivo JSON que exporta la app móvil (<code>viking-relevamiento</code>). Cada relevamiento entra como presupuesto en estado Borrador; si el mismo relevamiento ya se había importado antes, no se duplica.</p>
+
+    <h2>Convertir a cliente</h2>
+    <p>Un presupuesto <b>Aprobado</b> se puede convertir en cliente con un clic: pasa a la pantalla de Alta con nombre, teléfono, dirección, email, ambientes y modelo ya cargados, y los sensores relevados quedan listos para importarse — solo falta completar lote, MAC, PIN OTA y versión instalada.</p>
+    <div class="note">📌 Un presupuesto aprobado es también el punto de entrada de <a href="#gestion">Gestión económica</a> y de una <a href="#fabricacion">orden de trabajo "desde presupuesto"</a> — todo el circuito comercial cuelga de ese estado.</div>
+  </section>
+
+  <!-- GESTION ECONOMICA -->
+  <section class="section" id="gestion">
+    <div class="section-header">
+      <span class="section-icon">💰</span>
+      <div><div class="section-title">Gestión económica</div><div class="section-subtitle">Seguimiento de cobro por venta, ligado a un presupuesto aprobado</div></div>
+    </div>
+    <p>Una gestión se crea eligiendo un presupuesto aprobado (trae el monto total calculado y la forma de pago ya cargados) y registra: monto del sistema, adelanto, fecha de entrega prometida vs. real, y una lista de pagos de saldo. El saldo pendiente se recalcula solo: <code>monto total − adelanto − suma de pagos registrados</code>.</p>
+    <p>Cada gestión tiene su propio PDF de resumen ("📄 PDF").</p>
+  </section>
+
+  <!-- ACTAS -->
+  <section class="section" id="actas">
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <div><div class="section-title">Actas de conformidad</div><div class="section-subtitle">Certifican la entrega y arrancan la garantía</div></div>
+    </div>
+    <p>El acta certifica que el cliente recibió el sistema instalado y funcionando; su firma da inicio al período de garantía. Se gestiona desde la <a href="#ficha">ficha del cliente</a> (pestaña 📄 Acta) y también aparece listada en este módulo para verla de conjunto.</p>
+    <p>Campos: duración y alcance de la garantía (por defecto "12 meses" / "Materiales y mano de obra"), más los datos del archivo físico o digital firmado — número, fecha de firma, link a Drive/OneDrive y observaciones. Desde ahí mismo se genera el PDF del acta.</p>
+    <div class="tip">💡 La fecha de vencimiento de garantía cargada acá es la que <a href="#mantenimientos">Mantenimiento</a> propone automáticamente al abrir un registro para ese cliente.</div>
+  </section>
+
+  <!-- CLIENTES -->
+  <section class="section" id="clientes">
+    <div class="section-header">
+      <span class="section-icon">🔍</span>
+      <div><div class="section-title">Listado y alta de clientes</div><div class="section-subtitle">El registro central de instalaciones Zpro</div></div>
+    </div>
+    <p>El listado se filtra por texto (nombre, lote o barrio), modelo Zpro (Base / Energy / Comfort / Black) y estado (Activo / Baja). Un cliente dado de baja no se borra — queda marcado y se puede reactivar en cualquier momento.</p>
+    <h2>Alta manual</h2>
+    <p>Datos obligatorios: nombre, lote, teléfono. El resto (barrio, modelo, versión instalada, fecha de instalación, MAC del ESP32, PIN OTA, Chat ID de Telegram, email, cantidad de ambientes) se puede completar después desde la ficha. Un alta manual es independiente del circuito de presupuesto → conversión — sirve para cargar clientes ya instalados o históricos.</p>
+  </section>
+
+  <!-- FICHA CLIENTE -->
+  <section class="section" id="ficha">
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <div><div class="section-title">Ficha del cliente</div><div class="section-subtitle">Seis pestañas con todo el historial de la instalación</div></div>
+    </div>
+    <p>Al abrir un cliente del listado, la ficha se organiza en pestañas:</p>
+    <ul>
+      <li><b>📋 Datos Zpro</b> — datos del cliente y del equipo instalado (modelo, versión, MAC, PIN OTA, Chat ID).</li>
+      <li><b>🔧 Equipamiento</b> — el equipamiento provisto en la instalación.</li>
+      <li><b>📡 Instalación Zigbee</b> — cada sensor Zigbee instalado, con su tipo (los tipos salen de <a href="#tipos">Tipos de sensor</a>).</li>
+      <li><b>🔄 Historial OTA</b> — cada actualización de firmware aplicada a ese equipo puntual, con resultado (Exitoso / Fallido / Parcial) y método (OTA / Serial / Manual). No confundir con <a href="#versiones">Versiones SW</a>, que es el catálogo global de releases disponibles.</li>
+      <li><b>🛠️ Mantenimiento</b> — accesos directos para registrar o ver visitas de este cliente (el detalle completo vive en el módulo <a href="#mantenimientos">Mantenimiento</a>).</li>
+      <li><b>📄 Acta</b> — la <a href="#actas">acta de conformidad</a> de este cliente.</li>
+    </ul>
+  </section>
+
+  <!-- FONDOS -->
+  <section class="section" id="fondos">
+    <div class="section-header">
+      <span class="section-icon">🏦</span>
+      <div><div class="section-title">Movimiento de fondos</div><div class="section-subtitle">Ingresos y egresos del negocio, por rubro y período</div></div>
+    </div>
+    <p>Cada movimiento es un Ingreso o Egreso con rubro, descripción, monto y —opcionalmente— un vínculo a un cliente o proveedor. Los filtros combinan tipo, rubro y rango de fechas (por defecto, el mes en curso); las tarjetas de arriba muestran total de ingresos, egresos y saldo del período filtrado.</p>
+    <h2>Anticipos por ventas → orden de trabajo</h2>
+    <p>Un ingreso con rubro "Anticipos por ventas" vinculado a un cliente muestra un botón "🔧 OT" si ese cliente todavía no tiene una orden de fabricación activa — genera la orden de trabajo directo desde el cobro del anticipo, sin pasar por <a href="#fabricacion">Fabricación</a> a cargarla a mano. También tiene su propio recibo en PDF.</p>
+    <div class="tip">💡 "✕ Limpiar" resetea los filtros al mes en curso.</div>
+  </section>
+
+  <!-- STOCK Y CATALOGO -->
+  <section class="section" id="stock">
+    <div class="section-header">
+      <span class="section-icon">📦</span>
+      <div><div class="section-title">Stock y Catálogo</div><div class="section-subtitle">Componentes, cantidades disponibles y estado crítico</div></div>
+    </div>
+    <p><b>Catálogo</b> es la ficha maestra de cada componente: código, descripción, categoría, unidad, stock mínimo, ubicación física, proveedor y área (Fábrica / Mantenimiento / Instalación). <b>Stock</b> es la vista operativa sobre esos mismos componentes, con el disponible actual calculado en vivo a partir de los <a href="#movimientos">movimientos</a> — no es un número que se edita a mano.</p>
+    <h2>Estado crítico</h2>
+    <p>Un componente queda "crítico" cuando su stock disponible cae por debajo del mínimo configurado (solo si el mínimo es mayor a 0). El botón "⚠️ Solo críticos" filtra la tabla a esos casos, y son la base de la <a href="#ordenes">orden de compra automática</a>.</p>
+    <p>Ambas tablas se pueden ordenar haciendo clic en los encabezados, y tienen su versión imprimible en PDF.</p>
+  </section>
+
+  <!-- MOVIMIENTOS -->
+  <section class="section" id="movimientos">
+    <div class="section-header">
+      <span class="section-icon">🔄</span>
+      <div><div class="section-title">Movimientos de stock</div><div class="section-subtitle">Entradas, salidas manuales y salidas por instalación</div></div>
+    </div>
+    <p>Todo cambio de stock queda registrado acá: <b>Entrada</b> (compra o devolución), <b>Salida manual</b>, o <b>Salida instalación</b> (consumo ligado a una orden de trabajo o pedido de instalación). Cada movimiento guarda motivo, referencia, precio en pesos y en dólares, y a qué cliente o nota corresponde.</p>
+    <div class="note">📌 La mayoría de los movimientos de instalación y fabricación se generan solos —al iniciar una OT, al completar una etapa con devolución de material, o al confirmar la salida de stock de un pedido de instalación— así que rara vez hace falta cargarlos a mano acá.</div>
+  </section>
+
+  <!-- ORDENES -->
+  <section class="section" id="ordenes">
+    <div class="section-header">
+      <span class="section-icon">🛒</span>
+      <div><div class="section-title">Órdenes de compra</div><div class="section-subtitle">Manuales o generadas automáticamente por stock crítico</div></div>
+    </div>
+    <h2>⚡ Generar orden automática</h2>
+    <p>Revisa todos los componentes con mínimo configurado y stock por debajo de ese mínimo, y arma una orden de compra <b>por proveedor</b> (agrupa los componentes críticos de cada proveedor en su propia OC). Si no hay ningún componente crítico, avisa y no genera nada.</p>
+    <p>También se puede cargar una orden manual desde cero, o directo desde la ficha de un <a href="#proveedores">proveedor</a>.</p>
+  </section>
+
+  <!-- PROVEEDORES -->
+  <section class="section" id="proveedores">
+    <div class="section-header">
+      <span class="section-icon">🏭</span>
+      <div><div class="section-title">Proveedores</div><div class="section-subtitle">Registro de proveedores y sus órdenes de compra</div></div>
+    </div>
+    <p>Ficha simple por proveedor (empresa, contacto, datos). Desde la ficha de un proveedor se puede generar directamente una nueva orden de compra para él, y hay un listado imprimible en PDF.</p>
+  </section>
+
+  <!-- FABRICACION -->
+  <section class="section" id="fabricacion">
+    <div class="section-header">
+      <span class="section-icon">🔧</span>
+      <div><div class="section-title">Órdenes de trabajo (Fabricación)</div><div class="section-subtitle">Cinco fases, del mecanizado al egreso a instalación</div></div>
+    </div>
+    <p>Una orden de trabajo (OT) se puede crear <b>manual</b> (para stock) o <b>desde un presupuesto aprobado</b> (queda vinculada al cliente, que pasa a estado "Programado"). Cada OT tiene un número de serie único generado automáticamente según modelo y lote (ej. <code>VSS-K2605-02-001</code>).</p>
+
+    <h2>Inicio de fabricación</h2>
+    <p>Al iniciar la OT, el sistema compara el <a href="#kit">kit de fabricación</a> estándar contra el stock disponible; si falta algún material avisa antes de continuar (se puede igual seguir adelante). Confirmar el inicio da salida de stock a todo el kit de una vez y lo asigna como materiales en uso de esa OT — desde ahí también se puede sumar consumo adicional o devolver materiales sobrantes.</p>
+
+    <h2>Las cinco fases</h2>
+    <table>
+      <tr><th>Fase</th><th>Contenido</th></tr>
+      <tr><td><b>1 · Mecanizado</b></td><td>Apertura del N° de serie, estampado en el gabinete, perforación para prensaestopas, montaje del transformador.</td></tr>
+      <tr><td><b>2 · Montaje electrónico</b></td><td>Soldadura, crimpado de terminales, montaje de la placa ESP32-C6, ruteo de cableado y verificación de márgenes técnicos.</td></tr>
+      <tr><td><b>3 · Calibración y CC</b></td><td>Vinculación Zigbee y verificación del protocolo de control de calidad (checklist QA imprimible, ver más abajo).</td></tr>
+      <tr><td><b>4 · Embalaje</b></td><td>Batería, protección de conectores, kit de repuesto, cierre y empaque.</td></tr>
+      <tr><td><b>5 · Fabricación terminada</b></td><td>Confirmación final del N° de serie y vínculo con la ficha del cliente.</td></tr>
+    </table>
+    <p>Cada fase tiene su propia lista de tareas (checkboxes) más responsable, fecha y observaciones; se completa fase por fase y no se puede saltear. Al completar la última fase, la OT pasa a <b>Terminado</b> y —si viene de un presupuesto— <b>se genera automáticamente el pedido de instalación</b>, preguntando antes si hay materiales sobrantes para devolver al stock.</p>
+
+    <div class="tip">💡 El checklist QA de la Fase 3 tiene una versión imprimible ("Checklist QA") con los comandos de Telegram a verificar contra el firmware Z-PRO — arranque, roles de usuario, zona horaria, ciclo de armado/pánico, retardos, etc.</div>
+  </section>
+
+  <!-- KIT FABRICACION -->
+  <section class="section" id="kit">
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <div><div class="section-title">Kit de fabricación</div><div class="section-subtitle">La lista estándar de materiales de un equipo Zpro</div></div>
+    </div>
+    <p>Es la receta de materiales (código, descripción, cantidad, unidad) que se descuenta del stock cada vez que se inicia una orden de trabajo. Se edita agregando o quitando ítems del kit — cualquier cambio acá aplica a la próxima OT que se inicie, no afecta las ya iniciadas.</p>
+  </section>
+
+  <!-- INSTALACIONES -->
+  <section class="section" id="instalaciones">
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <div><div class="section-title">Pedidos de instalación</div><div class="section-subtitle">De equipo terminado a sistema funcionando en el domicilio</div></div>
+    </div>
+    <p>Un pedido de instalación (PI, numerado <code>PI-2026-0001</code>) nace automáticamente al terminar la fabricación de una OT ligada a cliente. Trae armado su propio kit de materiales: el <a href="#kitinst">kit base de instalación</a> más los sensores Zigbee relevados en el presupuesto original (o, si no hay presupuesto, los que ya figuren cargados en la ficha del cliente).</p>
+    <h2>Estados y flujo</h2>
+    <p><b>Pendiente → En curso → Completado</b> (o Cancelado). Antes de salir a instalar, "Confirmar salida de stock" descuenta del inventario todo el kit del pedido (avisa si falta algo). Al marcar <b>Completado</b>: el cliente pasa a estado "Completada", se agrega automáticamente una entrada al <a href="#ficha">historial OTA</a> del cliente ("Instalación inicial"), se guarda el técnico como nota, y se pregunta si hay materiales sobrantes para devolver al stock.</p>
+  </section>
+
+  <!-- KIT BASE INSTALACION -->
+  <section class="section" id="kitinst">
+    <div class="section-header">
+      <span class="section-icon">🧰</span>
+      <div><div class="section-title">Kit base de instalación</div><div class="section-subtitle">Materiales comunes a toda instalación, aparte de los sensores</div></div>
+    </div>
+    <p>Es la lista de materiales que se suma a todo pedido de instalación sin importar los sensores del cliente (cableado, fijaciones, insumos generales). Se edita igual que el <a href="#kit">kit de fabricación</a> y afecta a los pedidos que se generen de ahí en más.</p>
+  </section>
+
+  <!-- MANTENIMIENTO -->
+  <section class="section" id="mantenimientos">
+    <div class="section-header">
+      <span class="section-icon">🛠️</span>
+      <div><div class="section-title">Mantenimiento</div><div class="section-subtitle">Visitas técnicas, con garantía y facturación</div></div>
+    </div>
+    <p>Cada registro (numerado, ver "N° Registro") queda ligado a un cliente y guarda: técnico, tipo de visita (Correctivo, Preventivo, Configuración, Actualización de firmware, Cambio de pilas, Garantía, Otro), motivo del llamado, falla detectada, reparación realizada, material a facturar, mano de obra y si está <b>en garantía</b>. Al elegir el cliente, la fecha de vencimiento de garantía se autocompleta con la que quedó cargada en su <a href="#actas">acta</a>.</p>
+
+    <h2>Cuándo un registro "es a facturar"</h2>
+    <p>Un registro cuenta como <b>a facturar</b> cuando tiene mano de obra mayor a $0 o material cargado para facturar — <b>salvo que esté marcado en garantía</b>, en cuyo caso queda como "Garantía" independientemente del costo cargado. El filtro "A facturar / Sin facturar" de la tabla usa exactamente esta misma regla.</p>
+    <p>Las tarjetas de arriba resumen: registros totales, cuántos son a facturar, cuántos en garantía, y el total de mano de obra acumulado.</p>
+
+    <h2>Importar / exportar con la app móvil</h2>
+    <p>"📥 Importar" (acá y en <a href="#backup">Backup</a>) toma un registro completado desde <code>viking-mantenimiento</code> (la app de campo) y lo adosa directo a la ficha del cliente correspondiente. "📤" exporta un registro en el sentido inverso, para pasarlo al móvil.</p>
+  </section>
+
+  <!-- REPORTES -->
+  <section class="section" id="reportes">
+    <div class="section-header">
+      <span class="section-icon">📊</span>
+      <div><div class="section-title">Reportes</div><div class="section-subtitle">17 reportes de gestión, todos con resultado en pantalla</div></div>
+    </div>
+    <p>Cada botón genera un reporte puntual, sin necesidad de configurar filtros de antemano — quedan agrupados en Comercial, Logística, Financiero y Operativo:</p>
+    <ul>
+      <li><b>👥 Clientes por modelo</b>, <b>📄 Presupuestos por período</b>, <b>⏳ Presupuestos sin respuesta</b>, <b>📋 Historial de presupuestos</b></li>
+      <li><b>⚠️ Stock crítico</b>, <b>💲 Stock con precios</b>, <b>📦 Contenido por caja</b>, <b>📦 Valor inventario por área</b>, <b>🔄 Movimientos por período</b>, <b>📤 Salidas por motivo</b>, <b>📥 Entradas por origen</b>, <b>🛒 OC por proveedor</b></li>
+      <li><b>🔧 Estado de instalaciones</b>, <b>📡 Firmware instalado</b>, <b>⏰ Vencimientos de garantía</b></li>
+      <li><b>🔧 Clientes sin mantenimiento</b>, <b>🛠️ Historial de mantenimientos</b> (con su propio PDF)</li>
+    </ul>
+    <p>Aparte, la pestaña "📊 Reportes" (dentro de Análisis) trae un panel financiero de resumen que se actualiza con "🔄 Actualizar".</p>
+  </section>
+
+  <!-- CONFIG -->
+  <section class="section" id="config">
+    <div class="section-header">
+      <span class="section-icon">🏢</span>
+      <div><div class="section-title">Mi empresa</div><div class="section-subtitle">Datos que aparecen en presupuestos, actas y reportes impresos</div></div>
+    </div>
+    <p>Nombre de la empresa, datos de contacto y tipo de cambio de referencia (usado para mostrar equivalentes en dólares en Stock y Fondos). Se guarda con el botón "💾 Guardar" del encabezado.</p>
+  </section>
+
+  <!-- VERSIONES SW -->
+  <section class="section" id="versiones">
+    <div class="section-header">
+      <span class="section-icon">🔄</span>
+      <div><div class="section-title">Versiones SW</div><div class="section-subtitle">Catálogo global de releases del firmware Z-PRO</div></div>
+    </div>
+    <p>Es el historial de versiones de firmware disponibles (Mayor / Menor / Patch), con fecha y notas de cambios — no confundir con el <a href="#ficha">Historial OTA</a> de la ficha de cada cliente, que registra qué versión tiene instalada <b>ese</b> equipo puntual. Este catálogo sirve como referencia para saber qué versión ofrecer al actualizar un cliente.</p>
+  </section>
+
+  <!-- TIPOS SENSOR -->
+  <section class="section" id="tipos">
+    <div class="section-header">
+      <span class="section-icon">📡</span>
+      <div><div class="section-title">Tipos de sensor</div><div class="section-subtitle">La lista de tipos Zigbee disponibles al cargar un dispositivo</div></div>
+    </div>
+    <p>Lista simple y editable (Puerta, Ventana, Movimiento PIR, Botón, Humo, Vibración, y los que agregues) que alimenta el desplegable de tipo en la pestaña <a href="#ficha">Instalación Zigbee</a> de cada cliente.</p>
+  </section>
+
+  <!-- BACKUP -->
+  <section class="section" id="backup">
+    <div class="section-header">
+      <span class="section-icon">💾</span>
+      <div><div class="section-title">Backup / Restaurar</div><div class="section-subtitle">Exportar, importar, y los distintos niveles de borrado</div></div>
+    </div>
+    <h2>Exportar / importar</h2>
+    <p>"⬇️ Exportar JSON" descarga todos los datos en un único archivo. "☁️ Guardar en Drive" usa el selector de compartir del sistema (Web Share, en Android/mobile) para mandar ese mismo archivo directo a Google Drive; en PC simplemente descarga el archivo y pide subirlo a mano — <b>no es una sincronización automática</b> como en otras apps del ecosistema Viking, es exportar y compartir.</p>
+    <p>"⬆️ Restaurar backup" reemplaza <b>todos</b> los datos actuales por los del archivo — pide confirmación porque no se puede deshacer.</p>
+
+    <h2>Niveles de borrado</h2>
+    <table>
+      <tr><th>Acción</th><th>Borra</th><th>Preserva</th></tr>
+      <tr><td><b>🗑️ Borrar todo excepto logística</b></td><td>Clientes, presupuestos, movimientos de fondos, fabricación, instalaciones y finanzas</td><td>Catálogo, stock, proveedores, OC, movimientos de stock, kits y configuración</td></tr>
+      <tr><td><b>🔄 Reiniciar datos operativos</b></td><td>Clientes, presupuestos, movimientos de stock, órdenes de compra, fabricación, instalaciones y finanzas</td><td>Catálogo, proveedores, configuración, kits y versiones SW</td></tr>
+      <tr><td><b>🗑️ Borrar todos los datos</b></td><td>Todo — clientes, dispositivos, historial y configuración</td><td>Nada. Recomendado exportar backup antes.</td></tr>
+    </table>
+    <div class="warning">⚠️ Los tres botones de borrado son irreversibles. Usá "Borrar todo excepto logística" para arrancar una temporada comercial nueva sin perder el catálogo armado; "Borrar todos los datos" solo para dejar el sistema en cero absoluto.</div>
+  </section>
+
+  <hr class="div">
+
+  <!-- CHANGELOG -->
+  <section class="section" id="changelog">
+    <div class="section-header">
+      <span class="section-icon">🧾</span>
+      <div><div class="section-title">Historial de cambios</div><div class="section-subtitle">Registro de versiones — de más reciente a más antigua</div></div>
+    </div>
+
+    <details class="changelog-details" open>
+      <summary class="changelog-summary">Ver historial de versiones</summary>
+
+      <div class="changelog-entry">
+        <div class="changelog-version"><span class="v-num">v2.0</span><span class="changelog-tag tag-feature">feature</span></div>
+        <ul class="changelog-list">
+          <li>Punto de partida de este manual: ciclo comercial completo (presupuestos, gestión económica, actas), clientes, logística (stock, catálogo, movimientos, órdenes de compra, proveedores), fabricación por etapas con checklist QA, instalaciones con generación automática de pedido, mantenimiento con lógica de garantía/facturación, 17 reportes, backup y niveles de borrado</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+</main>
+</div>
+</body>
+</html>
