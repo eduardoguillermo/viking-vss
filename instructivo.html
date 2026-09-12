@@ -129,7 +129,7 @@
 
 <div class="layout">
 <nav class="sidebar">
-  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.2</p></div></div>
+  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.3</p></div></div>
 
   <div class="section-label">Introducción</div>
   <a href="#intro">🏠 ¿Qué es esta app?</a>
@@ -181,7 +181,7 @@
     <h1>🛡️ Viking Security Systems</h1>
     <p>Manual del sistema administrativo — ciclo completo del negocio, de presupuesto a mantenimiento</p>
     <div class="hero-badges">
-      <span class="badge badge-red">✓ v2.2</span>
+      <span class="badge badge-red">✓ v2.3</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
     </div>
@@ -231,6 +231,8 @@
     </div>
     <p>Una gestión se crea eligiendo un presupuesto aprobado (trae el monto total calculado y la forma de pago ya cargados) y registra: monto del sistema, adelanto, fecha de entrega prometida vs. real, y una lista de pagos de saldo. El saldo pendiente se recalcula solo: <code>monto total − adelanto − suma de pagos registrados</code>.</p>
     <p>Cada gestión tiene su propio PDF de resumen ("📄 PDF").</p>
+    <h2>Sincronización automática con Fondos <span class="badge badge-green">Nuevo</span></h2>
+    <p>El adelanto y cada pago de saldo generan (o actualizan) su propio ingreso en <a href="#fondos">Movimiento de fondos</a> — rubro "Anticipos por ventas" — sin necesidad de cargarlo dos veces. Si cambiás el monto del adelanto en una gestión ya existente, el ingreso vinculado en Fondos se actualiza solo; cada pago de saldo nuevo genera un ingreso propio. Al eliminar una gestión, se pregunta si también querés borrar esos movimientos vinculados en Fondos o dejarlos sueltos.</p>
   </section>
 
   <!-- ACTAS -->
@@ -253,6 +255,8 @@
     <p>El listado se filtra por texto (nombre, lote o barrio), modelo Zpro (Base / Energy / Comfort / Black) y estado (Activo / Baja). Un cliente dado de baja no se borra — queda marcado y se puede reactivar en cualquier momento.</p>
     <h2>Alta manual</h2>
     <p>Datos obligatorios: nombre, lote, teléfono. El resto (barrio, modelo, versión instalada, fecha de instalación, MAC del ESP32, PIN OTA, Chat ID de Telegram, email, cantidad de ambientes) se puede completar después desde la ficha. Un alta manual es independiente del circuito de presupuesto → conversión — sirve para cargar clientes ya instalados o históricos.</p>
+    <h2>Dar de baja vs. Eliminar</h2>
+    <p>"🚫 Baja" es reversible y no rompe nada — el cliente queda marcado como inactivo y se puede reactivar cuando quieras. "🗑️ Eliminar cliente" es permanente y, antes de confirmar, la app te avisa cuántas órdenes de trabajo, pedidos de instalación, registros de mantenimiento, movimientos de fondos y gestiones económicas quedan sin vínculo al cliente real (no se borran ni se actualizan, solo pierden la referencia). Si necesitás conservar ese historial, usá "Dar de baja" en lugar de eliminar.</p>
   </section>
 
   <!-- FICHA CLIENTE -->
@@ -281,6 +285,7 @@
     <p>Cada movimiento es un Ingreso o Egreso con rubro, descripción, monto y —opcionalmente— un vínculo a un cliente o proveedor. Los filtros combinan tipo, rubro y rango de fechas (por defecto, el mes en curso); las tarjetas de arriba muestran total de ingresos, egresos y saldo del período filtrado.</p>
     <h2>Anticipos por ventas → orden de trabajo</h2>
     <p>Un ingreso con rubro "Anticipos por ventas" vinculado a un cliente muestra un botón "🔧 OT" si ese cliente todavía no tiene una orden de fabricación activa — genera la orden de trabajo directo desde el cobro del anticipo, sin pasar por <a href="#fabricacion">Fabricación</a> a cargarla a mano. También tiene su propio recibo en PDF.</p>
+    <div class="note">📌 Los ingresos con este rubro que vienen de un adelanto o pago de saldo de <a href="#gestion">Gestión económica</a> se generan solos — no hace falta cargarlos acá también.</div>
     <div class="tip">💡 "✕ Limpiar" resetea los filtros al mes en curso.</div>
   </section>
 
@@ -470,6 +475,15 @@
 
     <details class="changelog-details" open>
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+      <div class="changelog-entry">
+        <div class="changelog-version"><span class="v-num">v2.3</span><span class="changelog-tag tag-feature">feature</span></div>
+        <ul class="changelog-list">
+          <li>Gestión económica y Movimiento de fondos ya no son sistemas separados: el adelanto y cada pago de saldo generan (o actualizan) su propio ingreso vinculado en Fondos, rubro "Anticipos por ventas" — no hace falta cargarlo dos veces</li>
+          <li>Al borrar una gestión económica con movimientos vinculados en Fondos, la app pregunta si también querés borrarlos o dejarlos sueltos</li>
+          <li>"Eliminar cliente" ahora avisa antes de confirmar cuántas órdenes de trabajo, pedidos de instalación, registros de mantenimiento, movimientos de fondos y gestiones económicas quedan sin vínculo al cliente real</li>
+        </ul>
+      </div>
 
       <div class="changelog-entry">
         <div class="changelog-version"><span class="v-num">v2.2</span><span class="changelog-tag tag-fix">fix</span></div>
