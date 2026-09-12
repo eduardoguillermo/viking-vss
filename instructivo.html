@@ -129,7 +129,7 @@
 
 <div class="layout">
 <nav class="sidebar">
-  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.3</p></div></div>
+  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.4</p></div></div>
 
   <div class="section-label">Introducción</div>
   <a href="#intro">🏠 ¿Qué es esta app?</a>
@@ -181,7 +181,7 @@
     <h1>🛡️ Viking Security Systems</h1>
     <p>Manual del sistema administrativo — ciclo completo del negocio, de presupuesto a mantenimiento</p>
     <div class="hero-badges">
-      <span class="badge badge-red">✓ v2.3</span>
+      <span class="badge badge-red">✓ v2.4</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
     </div>
@@ -448,10 +448,24 @@
   <section class="section" id="backup">
     <div class="section-header">
       <span class="section-icon">💾</span>
-      <div><div class="section-title">Backup / Restaurar</div><div class="section-subtitle">Exportar, importar, y los distintos niveles de borrado</div></div>
+      <div><div class="section-title">Backup / Restaurar</div><div class="section-subtitle">Snapshots automáticos, carpeta local, exportar/importar y niveles de borrado</div></div>
     </div>
+
+    <h2>Snapshots locales <span class="badge badge-green">Nuevo</span></h2>
+    <p>La app guarda sola una copia de tus datos en este dispositivo (<code>localStorage</code>) en tres momentos: al cerrar la pestaña con la X, al minimizar o cambiar de ventana, y al tocar "🚪 Salir". Se conservan hasta 10 — si se llena, se borran primero los automáticos antes que los que guardaste a mano con "📸 Guardar snapshot ahora".</p>
+    <p>"💾 Ver snapshots locales" (en Backup) lista todos con fecha y tipo (Automático / Manual), y permite restaurar uno o borrarlo. Restaurar guarda el estado actual como snapshot antes de pisarlo, así que no se pierde nada por accidente.</p>
+    <div class="note">📌 Los snapshots viven en este navegador y este dispositivo — no reemplazan un backup exportado o en la carpeta local, que sí podés mover a otra PC.</div>
+
+    <h2>Carpeta local <span class="badge badge-green">Nuevo</span></h2>
+    <p>"📂 Elegir carpeta local" vincula una carpeta real de tu PC (por ejemplo, tu carpeta de OneDrive o Google Drive sincronizada). Una vez vinculada, cada vez que se guarda un cambio en cualquier parte de la app, se actualiza ahí un archivo <code>viking_backup_&lt;fecha&gt;.json</code> — sin que tengas que hacer nada. Se guardan los últimos 7 backups por fecha; los más viejos se borran solos.</p>
+    <p>La vinculación se recuerda entre sesiones. Al reabrir la app intenta reconectar la carpeta en silencio; si el navegador venció el permiso, aparece un banner abajo a la izquierda pidiendo un clic para reautorizar — el navegador exige ese gesto explícito, no se puede renovar solo.</p>
+    <div class="note">📌 Requiere un navegador con soporte de File System Access (Chrome o Brave). En otros navegadores, el botón avisa que no está disponible y no rompe nada más.</div>
+
+    <h2>Botón "🚪 Salir" <span class="badge badge-green">Nuevo</span></h2>
+    <p>En la barra superior. Fuerza un snapshot local manual y, si hay una carpeta vinculada, actualiza también el backup ahí — todo antes de cerrar la ventana. Muestra un resumen de qué se guardó bien y qué no.</p>
+
     <h2>Exportar / importar</h2>
-    <p>"⬇️ Exportar JSON" descarga todos los datos en un único archivo. "☁️ Guardar en Drive" usa el selector de compartir del sistema (Web Share, en Android/mobile) para mandar ese mismo archivo directo a Google Drive; en PC simplemente descarga el archivo y pide subirlo a mano — <b>no es una sincronización automática</b> como en otras apps del ecosistema Viking, es exportar y compartir.</p>
+    <p>"⬇️ Exportar JSON" descarga todos los datos en un único archivo. "☁️ Guardar en Drive" usa el selector de compartir del sistema (Web Share, en Android/mobile) para mandar ese mismo archivo directo a Google Drive; en PC simplemente descarga el archivo y pide subirlo a mano — <b>no es una sincronización automática</b> como la carpeta local o como otras apps del ecosistema Viking, es exportar y compartir.</p>
     <p>"⬆️ Restaurar backup" reemplaza <b>todos</b> los datos actuales por los del archivo — pide confirmación porque no se puede deshacer.</p>
 
     <h2>Niveles de borrado</h2>
@@ -475,6 +489,16 @@
 
     <details class="changelog-details" open>
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+      <div class="changelog-entry">
+        <div class="changelog-version"><span class="v-num">v2.4</span><span class="changelog-tag tag-feature">feature</span></div>
+        <ul class="changelog-list">
+          <li>Sistema de cierre seguro (mismo patrón que Control Financiero): snapshots automáticos en localStorage al cerrar la pestaña, minimizar o cambiar de ventana, con modal para ver/restaurar/borrar (hasta 10)</li>
+          <li>Botón "🚪 Salir" en la barra superior: fuerza un snapshot manual (y backup a la carpeta local, si está vinculada) antes de cerrar</li>
+          <li>Carpeta local vinculable vía File System Access API: mantiene un backup JSON actualizado solo, sin subir nada a la nube — persiste entre sesiones, con reautorización de un clic si el navegador vence el permiso</li>
+          <li>Corregido: el banner de recordatorio de backup estaba además duplicado en otro punto del archivo (aparte del bug de v2.2), lo que hacía que "Cerrar" no lo sacara del todo de la pantalla</li>
+        </ul>
+      </div>
 
       <div class="changelog-entry">
         <div class="changelog-version"><span class="v-num">v2.3</span><span class="changelog-tag tag-feature">feature</span></div>
