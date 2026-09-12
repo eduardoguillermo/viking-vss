@@ -277,7 +277,22 @@ function darBaja(id){
 function borrarCliente(id){
   const c=DB.clientes.find(function(x){return x.id===id;});
   if(!c) return;
-  if(!confirm('¿Eliminar permanentemente al cliente "'+c.nombre+'"? Esta acción no se puede deshacer.')) return;
+  var nOT=(DB.fabricacion||[]).filter(function(f){return f.clienteId===id;}).length;
+  var nPI=(DB.instalaciones||[]).filter(function(p){return p.clienteId===id;}).length;
+  var nMant=(DB.mantenimientos||[]).filter(function(m){return m.clienteId===id;}).length;
+  var nFondos=(DB.fondos||[]).filter(function(f){return f.vinculo==='cli:'+id;}).length;
+  var nGest=(DB.gestiones||[]).filter(function(g){return g.clienteNombre===c.nombre;}).length;
+  var huerfanos=[];
+  if(nOT) huerfanos.push(nOT+' orden(es) de trabajo');
+  if(nPI) huerfanos.push(nPI+' pedido(s) de instalación');
+  if(nMant) huerfanos.push(nMant+' registro(s) de mantenimiento');
+  if(nFondos) huerfanos.push(nFondos+' movimiento(s) de fondos');
+  if(nGest) huerfanos.push(nGest+' gestión(es) económica(s)');
+  var msg='¿Eliminar permanentemente al cliente "'+c.nombre+'"? Esta acción no se puede deshacer.';
+  if(huerfanos.length){
+    msg+='\n\n⚠️ Este cliente tiene registros relacionados que NO se van a borrar ni actualizar — van a quedar sin vínculo al cliente real:\n• '+huerfanos.join('\n• ')+'\n\nSi preferís conservar el historial, usá "Dar de baja" en lugar de eliminar.';
+  }
+  if(!confirm(msg)) return;
   if(!confirm('Última confirmación. ¿Eliminar "'+c.nombre+'"?')) return;
   DB.clientes=DB.clientes.filter(function(x){return x.id!==id;});
   save(); renderStats(); renderClientes(); goTo('clientes');
@@ -3976,6 +3991,31 @@ function pdfProveedores(){
 
 
 // GESTION ECONOMICA =========================================
+// Vincula Gestión económica con Movimiento de fondos: cada adelanto/pago de saldo
+// genera (o actualiza) su propio ingreso en DB.fondos, con rubro "Anticipos por ventas".
+function crearOActualizarFondoGestion(fondoId, monto, fecha, clienteNombre, nota){
+  if(!DB.fondos) DB.fondos=[];
+  var cli=DB.clientes.find(function(c){return c.nombre===clienteNombre;});
+  var existente=fondoId?DB.fondos.find(function(f){return f.id===fondoId;}):null;
+  if(existente){
+    existente.monto=monto;
+    existente.fecha=fecha||existente.fecha;
+    existente.desc=nota||existente.desc;
+    return existente.id;
+  }
+  var nuevo={
+    id:DB.nid++,
+    tipo:'Ingreso',
+    rubro:'Anticipos por ventas',
+    fecha:fecha||today(),
+    desc:nota||('Adelanto — '+(clienteNombre||'')),
+    monto:monto,
+    vinculo:cli?('cli:'+cli.id):''
+  };
+  DB.fondos.unshift(nuevo);
+  return nuevo.id;
+}
+
 function renderGestion(){
   var el=document.getElementById('gestion-body');
   if(!el) return;
@@ -4052,18 +4092,26 @@ function modalGestion(){
       var presId=parseInt(document.getElementById('gest-pres').value);
       if(!presId){alert('Seleccioná un presupuesto.');return false;}
       var pres=DB.presupuestos.find(function(p){return p.id===presId;});
-      DB.gestiones.unshift({
+      var nombreCli=pres?pres.nombre:'';
+      var adelantoMonto=parseFloat(document.getElementById('gest-amonto').value)||0;
+      var adelantoFecha=document.getElementById('gest-afecha').value;
+      var nuevaG={
         id:DB.nid++,
         presId:presId,
-        clienteNombre:pres?pres.nombre:'',
+        clienteNombre:nombreCli,
         montoSistema:parseFloat(document.getElementById('gest-monto').value)||0,
         formaPago:document.getElementById('gest-fp').value,
         fechaEntregaProm:document.getElementById('gest-eprom').value,
         fechaEntregaReal:document.getElementById('gest-ereal').value,
-        adelantoFecha:document.getElementById('gest-afecha').value,
-        adelanto:parseFloat(document.getElementById('gest-amonto').value)||0,
-        pagos:[]
-      });
+        adelantoFecha:adelantoFecha,
+        adelanto:adelantoMonto,
+        pagos:[],
+        fondoAdelantoId:null
+      };
+      if(adelantoMonto>0){
+        nuevaG.fondoAdelantoId=crearOActualizarFondoGestion(null,adelantoMonto,adelantoFecha,nombreCli,'Adelanto — '+nombreCli);
+      }
+      DB.gestiones.unshift(nuevaG);
       save(); renderGestion(); return true;
     });
 }
@@ -4103,17 +4151,34 @@ function editarGestion(id){
       g.fechaEntregaReal=document.getElementById('eg-ereal').value;
       g.adelantoFecha=document.getElementById('eg-afecha').value;
       g.adelanto=parseFloat(document.getElementById('eg-amonto').value)||0;
+      if(g.adelanto>0){
+        g.fondoAdelantoId=crearOActualizarFondoGestion(g.fondoAdelantoId,g.adelanto,g.adelantoFecha,g.clienteNombre,'Adelanto — '+g.clienteNombre);
+      }
       var pmonto=parseFloat(document.getElementById('eg-pmonto').value)||0;
       if(pmonto>0){
         if(!g.pagos) g.pagos=[];
-        g.pagos.push({fecha:document.getElementById('eg-pfecha').value,monto:pmonto,nota:document.getElementById('eg-pnota').value});
+        var pfecha=document.getElementById('eg-pfecha').value;
+        var pnota=document.getElementById('eg-pnota').value;
+        var fondoIdPago=crearOActualizarFondoGestion(null,pmonto,pfecha,g.clienteNombre,'Pago de saldo — '+g.clienteNombre+(pnota?' ('+pnota+')':''));
+        g.pagos.push({fecha:pfecha,monto:pmonto,nota:pnota,fondoId:fondoIdPago});
       }
       save(); renderGestion(); return true;
     });
 }
 
 function borrarGestion(id){
-  if(!confirm('¿Eliminar esta gestión económica?')) return;
+  var g=DB.gestiones.find(function(x){return x.id===id;});
+  if(!g) return;
+  var idsFondos=[];
+  if(g.fondoAdelantoId) idsFondos.push(g.fondoAdelantoId);
+  (g.pagos||[]).forEach(function(p){ if(p.fondoId) idsFondos.push(p.fondoId); });
+  var msg='¿Eliminar esta gestión económica?';
+  if(idsFondos.length) msg+='\n\nTiene '+idsFondos.length+' movimiento(s) vinculados en Fondos (adelanto y/o pagos de saldo).';
+  if(!confirm(msg)) return;
+  var borrarFondosTambien=idsFondos.length>0 && confirm('¿Eliminar también esos '+idsFondos.length+' movimiento(s) de Fondos vinculados? (Cancelar los deja en Fondos como movimientos sueltos)');
+  if(borrarFondosTambien){
+    DB.fondos=(DB.fondos||[]).filter(function(f){return idsFondos.indexOf(f.id)===-1;});
+  }
   DB.gestiones=DB.gestiones.filter(function(x){return x.id!==id;});
   save(); renderGestion();
 }
