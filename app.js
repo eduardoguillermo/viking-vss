@@ -126,6 +126,7 @@ function save(){
   invalidarStockCache();
   localStorage.setItem(SKEY,JSON.stringify(DB));
   if(window._vssFolderHandle) vssBackupEnCarpeta(window._vssFolderHandle);
+  vssSyncDebounce();
 }
 
 // =======================================================
@@ -942,10 +943,14 @@ function vssMostrarSnapshots(){
 function vssSalir(){
   const ok = vssHacerSnapshot(true);
   var lineas = '📦 Backup al salir\n\n'+(ok?'✅':'❌')+' Snapshot local: '+(ok?'guardado':'error');
-  if(window._vssFolderHandle) lineas += '\n⏳ Carpeta local: guardando...';
+  if(window._vssFolderHandle){ lineas += '\n⏳ Carpeta local: guardando...'; vssBackupEnCarpeta(window._vssFolderHandle); }
   else lineas += '\n➖ Carpeta local: no vinculada';
-  lineas += '\n➖ Drive: sin integración — usá "☁️ Guardar en Drive" en Backup si querés subirlo a mano.';
-  if(window._vssFolderHandle) vssBackupEnCarpeta(window._vssFolderHandle);
+  if(vssGToken || vssGTokenCargarLocal()){
+    lineas += '\n⏳ Google Drive: sincronizando...';
+    if(_vssSyncPendiente) vssSyncSilencioso();
+  } else {
+    lineas += '\n➖ Google Drive: no conectado';
+  }
   alert(lineas);
   window.close();
 }
@@ -1187,27 +1192,211 @@ function exportarJSON(){
   URL.revokeObjectURL(url);
 }
 
-function exportarADrive(){
-  const fecha=today();
-  const json=JSON.stringify(DB,null,2);
-  const blob=new Blob([json],{type:'application/json'});
-  const file=new File([blob],'viking_backup_'+fecha+'.json',{type:'application/json'});
-  // Use Web Share API if available (Android/mobile)
-  if(navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({
-      files:[file],
-      title:'Viking Backup '+fecha,
-      text:'Backup del sistema Viking Security Systems'
-    }).then(function(){
-      alert('Archivo compartido. Seleccioná Google Drive como destino.');
-    }).catch(function(e){
-      if(e.name!=='AbortError') exportarJSON(); // fallback
+// ═══════════════════════════════════════════════════════════════
+// GOOGLE DRIVE — backup real, mismo patrón que Control Financiero
+// ═══════════════════════════════════════════════════════════════
+const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
+const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
+const VSS_DRIVE_FOLDER='VikingSecuritySystems';
+const VSS_GTOKEN_KEY='viking_gtoken';
+const VSS_GTOKEN_EXP_KEY='viking_gtoken_exp';
+const VSS_GTOKEN_SCOPE_KEY='viking_gtoken_scope_v';
+const VSS_GTOKEN_SCOPE_VERSION='1';
+let vssGToken=null;
+let _vssFolderId=null;
+let _vssDriveFileId=null;      // id del archivo único de autosync, para sobreescribir en vez de duplicar
+let _vssSyncPendiente=false;
+let _vssSyncActivo=false;
+let _vssSyncTimer=null;
+
+function vssGTokenGuardar(token, expiresInSec){
+  const exp = Date.now() + (expiresInSec||3500)*1000;
+  try {
+    localStorage.setItem(VSS_GTOKEN_KEY, token);
+    localStorage.setItem(VSS_GTOKEN_EXP_KEY, String(exp));
+    localStorage.setItem(VSS_GTOKEN_SCOPE_KEY, VSS_GTOKEN_SCOPE_VERSION);
+  } catch(e){}
+  vssGToken = token;
+}
+function vssGTokenCargarLocal(){
+  try {
+    const t = localStorage.getItem(VSS_GTOKEN_KEY);
+    const exp = parseInt(localStorage.getItem(VSS_GTOKEN_EXP_KEY)||'0');
+    const scopeV = localStorage.getItem(VSS_GTOKEN_SCOPE_KEY);
+    if(t && exp && Date.now() < exp-60000 && scopeV===VSS_GTOKEN_SCOPE_VERSION){ vssGToken=t; return true; }
+  } catch(e){}
+  return false;
+}
+function vssGTokenLimpiar(){
+  vssGToken = null;
+  try { localStorage.removeItem(VSS_GTOKEN_KEY); localStorage.removeItem(VSS_GTOKEN_EXP_KEY); localStorage.removeItem(VSS_GTOKEN_SCOPE_KEY); } catch(e){}
+}
+// Busca (o crea) la carpeta visible "VikingSecuritySystems" en el Drive del usuario
+function vssDriveEnsureFolder(token, cb){
+  if(_vssFolderId){ cb(_vssFolderId); return; }
+  const q = encodeURIComponent("name='"+VSS_DRIVE_FOLDER+"' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)', {headers:{Authorization:'Bearer '+token}})
+    .then(function(r){return r.json();}).then(function(data){
+      if(data.files && data.files.length){ _vssFolderId=data.files[0].id; cb(_vssFolderId); return; }
+      fetch('https://www.googleapis.com/drive/v3/files', {method:'POST', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}, body:JSON.stringify({name:VSS_DRIVE_FOLDER, mimeType:'application/vnd.google-apps.folder'})})
+        .then(function(r){return r.json();}).then(function(f){ _vssFolderId=f.id; cb(_vssFolderId); })
+        .catch(function(){ vssSyncSetBadge('err'); });
+    }).catch(function(){ vssSyncSetBadge('err'); });
+}
+function vssDriveCargarGoogle(cb){
+  if(typeof google!=='undefined'){ cb(); return; }
+  const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client';
+  s.onload=cb; s.onerror=function(){ alert('No se pudo cargar Google. Verificá la conexión.'); };
+  document.head.appendChild(s);
+}
+function vssDriveGetToken(cb){
+  if(vssGTokenCargarLocal()){ cb(vssGToken); return; }
+  vssDriveCargarGoogle(function(){
+    if(vssGToken){ cb(vssGToken); return; }
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE_CLIENT_ID, scope: GDRIVE_SCOPE, hint:'', prompt:'',
+      callback: function(resp){
+        if(resp.error==='interaction_required' || resp.error==='user_logged_out'){
+          const c2 = google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID, scope:GDRIVE_SCOPE, hint:'', callback:function(r2){
+            if(r2.error){ alert('Error: '+r2.error); return; }
+            vssGTokenGuardar(r2.access_token, r2.expires_in); cb(vssGToken);
+          }});
+          c2.requestAccessToken(); return;
+        }
+        if(resp.error){ alert('Error Google: '+resp.error); return; }
+        vssGTokenGuardar(resp.access_token, resp.expires_in);
+        vssSyncSetBadge(_vssSyncPendiente?'pend':'noauth');
+        cb(vssGToken);
+      }
     });
-  } else {
-    // Desktop fallback - download and show instructions
-    exportarJSON();
-    alert('En PC: el archivo se descargó. Subilo manualmente a Google Drive.\nEn Android: usá el botón "Compartir" del archivo descargado y seleccioná Drive.');
-  }
+    client.requestAccessToken({prompt:''});
+  });
+}
+function vssDriveSubir(){
+  vssDriveGetToken(function(token){
+    vssDriveEnsureFolder(token, function(folderId){
+      const a=new Date();
+      const ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
+      const nombre='backup_viking_'+ts+'.json';
+      const data=JSON.stringify(DB);
+      const meta=JSON.stringify({name:nombre, parents:[folderId]});
+      const form=new FormData();
+      form.append('metadata', new Blob([meta],{type:'application/json'}));
+      form.append('file', new Blob([data],{type:'application/json'}));
+      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {method:'POST', headers:{Authorization:'Bearer '+token}, body:form})
+        .then(function(r){return r.json();}).then(function(f){
+          if(f.id){ _vssSyncPendiente=false; vssSyncSetBadge('ok'); alert('✅ Backup guardado en Drive: '+nombre); }
+          else { alert('Error al subir: '+JSON.stringify(f)); vssGTokenLimpiar(); }
+        }).catch(function(e){ alert('Error: '+e.message); vssGTokenLimpiar(); });
+    });
+  });
+}
+function vssDriveRestaurar(){
+  vssDriveGetToken(function(token){
+    vssDriveEnsureFolder(token, function(folderId){
+      const q = encodeURIComponent("'"+folderId+"' in parents and trashed=false");
+      fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=50', {headers:{Authorization:'Bearer '+token}})
+        .then(function(r){return r.json();}).then(function(data){
+          const arch=(data.files||[]).filter(function(f){return f.name.startsWith('backup_');});
+          vssMostrarModalDrive(arch, token);
+        }).catch(function(e){ alert('Error al listar Drive: '+e.message); vssGTokenLimpiar(); });
+    });
+  });
+}
+function vssMostrarModalDrive(arch, token){
+  document.getElementById('modal-vss-drive')?.remove();
+  const rows = arch.length ? arch.map(function(f){
+    const fecha = new Date(f.modifiedTime).toLocaleString('es-AR');
+    const esAuto = f.name==='backup_autosync.json';
+    const label = esAuto ? '🔄 Autosync — '+fecha : f.name;
+    return '<div onclick="vssDriveCargar(\''+f.id+'\',\''+f.name.replace(/'/g,"\\'")+'\',vssGToken)" '+
+      'style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:6px;border:1px solid #DDD;margin-bottom:8px;cursor:pointer" '+
+      'onmouseover="this.style.background=\'#F7F7F7\'" onmouseout="this.style.background=\'\'">'+
+      '<div><div style="font-size:13px;font-weight:700;color:#222">'+label+'</div><div style="font-size:11px;color:#666">'+fecha+(esAuto?' · sync automático':'')+'</div></div>'+
+      '<span style="font-size:11px;color:#B71C1C;font-weight:700">Restaurar →</span></div>';
+  }).join('') : '<p style="color:#666;text-align:center;padding:20px">Sin backups en Drive. Usá ☁️ Subir para crear el primero.</p>';
+  const ov = document.createElement('div');
+  ov.id='modal-vss-drive';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:12px;width:480px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+      '<div style="background:#1A1A1A;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">'+
+        '<h3 style="margin:0;color:#fff;font-size:15px">☁️ Backups en Google Drive</h3>'+
+        '<button onclick="document.getElementById(\'modal-vss-drive\').remove()" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="padding:20px">'+rows+'</div>'+
+      '<div style="padding:16px 20px;border-top:1px solid #DDD;display:flex;justify-content:flex-end">'+
+        '<button onclick="document.getElementById(\'modal-vss-drive\').remove()" style="background:#F2F2F2;color:#222;border:none;border-radius:4px;padding:6px 14px;font-size:13px;cursor:pointer">Cerrar</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+}
+function vssDriveCargar(id, nombre, token){
+  if(!confirm('¿Restaurar "'+nombre+'"? Se reemplazarán todos los datos actuales.')) return;
+  document.getElementById('modal-vss-drive')?.remove();
+  fetch('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media', {headers:{Authorization:'Bearer '+token}})
+    .then(function(r){return r.json();}).then(function(res){
+      if(!res.clientes){ alert('Backup inválido.'); return; }
+      DB = res; save();
+      alert('✅ Backup restaurado: '+nombre+'\nSe recargará la aplicación.');
+      location.reload();
+    }).catch(function(e){ alert('Error al descargar: '+e.message); });
+}
+function vssSyncSetBadge(estado){
+  const b = document.getElementById('vss-drive-badge');
+  if(!b) return;
+  if(estado==='ok'){ b.textContent='✅ Drive: sincronizado'; b.style.color='var(--green)'; }
+  else if(estado==='pend'){ b.textContent='⏳ Drive: cambios sin sincronizar'; b.style.color='#7B4F00'; }
+  else if(estado==='sync'){ b.textContent='☁️ Drive: sincronizando...'; b.style.color='var(--blue)'; }
+  else if(estado==='err'){ b.textContent='⚠️ Drive: error de sincronización'; b.style.color='var(--red)'; }
+  else if(estado==='noauth'){ b.textContent='➖ Drive: sin conectar'; b.style.color='var(--text2)'; }
+}
+// Debounce: se llama en cada save(); espera 30s de calma antes de sincronizar de verdad
+function vssSyncDebounce(){
+  if(!vssGToken) vssGTokenCargarLocal();
+  if(!vssGToken){ vssSyncSetBadge('noauth'); return; }
+  _vssSyncPendiente = true;
+  vssSyncSetBadge('pend');
+  clearTimeout(_vssSyncTimer);
+  _vssSyncTimer = setTimeout(vssSyncSilencioso, 30000);
+}
+async function vssSyncSilencioso(){
+  if(_vssSyncActivo){ _vssSyncActivo = false; }
+  if(!vssGToken) return;
+  _vssSyncActivo = true;
+  vssSyncSetBadge('sync');
+  try {
+    const data = JSON.stringify(DB);
+    const folderId = await new Promise(function(res){ vssDriveEnsureFolder(vssGToken, res); });
+    if(!_vssDriveFileId){
+      const q = encodeURIComponent("name='backup_autosync.json' and '"+folderId+"' in parents and trashed=false");
+      const listR = await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)', {headers:{Authorization:'Bearer '+vssGToken}});
+      if(listR.ok){
+        const listD = await listR.json();
+        if(listD.files && listD.files.length>0) _vssDriveFileId = listD.files[0].id;
+      } else if(listR.status===401){ vssGTokenLimpiar(); _vssSyncActivo=false; vssSyncSetBadge('err'); return; }
+    }
+    let resp;
+    if(_vssDriveFileId){
+      resp = await fetch('https://www.googleapis.com/upload/drive/v3/files/'+_vssDriveFileId+'?uploadType=media', {method:'PATCH', headers:{Authorization:'Bearer '+vssGToken,'Content-Type':'application/json'}, body:data});
+    } else {
+      const meta = JSON.stringify({name:'backup_autosync.json', parents:[folderId]});
+      const form = new FormData();
+      form.append('metadata', new Blob([meta],{type:'application/json'}));
+      form.append('file', new Blob([data],{type:'application/json'}));
+      resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {method:'POST', headers:{Authorization:'Bearer '+vssGToken}, body:form});
+    }
+    if(resp.ok){
+      const f = await resp.json();
+      if(f.id) _vssDriveFileId = f.id;
+      _vssSyncPendiente = false;
+      vssSyncSetBadge('ok');
+    } else {
+      if(resp.status===401){ vssGTokenLimpiar(); _vssDriveFileId=null; }
+      vssSyncSetBadge('err');
+    }
+  } catch(e){ vssSyncSetBadge('err'); }
+  _vssSyncActivo = false;
 }
 
 function importarJSON(){
@@ -6853,38 +7042,18 @@ setTimeout(initNavCollapse, 50);
 
 // Snapshot local al cerrar con la X (beforeunload — síncrono, siempre funciona)
 window.addEventListener('beforeunload', function(){ vssHacerSnapshot(false); });
-// Snapshot al ocultar la pestaña o minimizar (sin Drive: Viking no tiene integración OAuth)
+// Snapshot al ocultar la pestaña o minimizar + intento de sync a Drive si hay cambios pendientes
 document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState === 'hidden') vssHacerSnapshot(false);
+  if(document.visibilityState === 'hidden'){
+    vssHacerSnapshot(false);
+    if(!vssGToken) vssGTokenCargarLocal();
+    if(vssGToken && _vssSyncPendiente) vssSyncSilencioso();
+  }
 });
 // Reconecta la carpeta local vinculada (si hay una) sin pedir permiso — solo consulta
 vssRestaurarCarpeta();
-
-// Backup reminder on every load
-setTimeout(function(){
-  var banner = document.createElement('div');
-  banner.id = 'backup-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#B71C1C;color:#fff;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:9999;font-size:13px;font-family:inherit';
-  var btnExp = document.createElement('button');
-  btnExp.textContent = 'Exportar ahora';
-  btnExp.style.cssText = 'background:#fff;color:#B71C1C;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700';
-  btnExp.onclick = function(){ exportarJSON(); document.getElementById('backup-banner').remove(); };
-  var btnCer = document.createElement('button');
-  btnCer.textContent = 'Cerrar';
-  btnCer.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
-  btnCer.onclick = function(){ document.getElementById('backup-banner').remove(); };
-  var btnDrive = document.createElement('button');
-  btnDrive.textContent = '☁️ Drive';
-  btnDrive.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
-  btnDrive.onclick = function(){ exportarADrive(); document.getElementById('backup-banner').remove(); };
-  var span = document.createElement('span');
-  span.textContent = '💾 Recordatorio: hacé un backup de tus datos para no perderlos.';
-  var btns = document.createElement('div');
-  btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0';
-  btns.appendChild(btnExp); btns.appendChild(btnDrive); btns.appendChild(btnCer);
-  banner.appendChild(span); banner.appendChild(btns);
-  document.body.appendChild(banner);
-}, 1500);
+// Reconecta Drive en silencio si ya había una sesión válida (sin popup)
+if(vssGTokenCargarLocal()) vssSyncSetBadge('ok'); else vssSyncSetBadge('noauth');
 // PRESUPUESTOS helpers =====================================
 function defPrecios(){
   const items={};
