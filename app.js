@@ -1243,6 +1243,49 @@ function vssDriveEnsureFolder(token, cb){
         .catch(function(){ vssSyncSetBadge('err'); });
     }).catch(function(){ vssSyncSetBadge('err'); });
 }
+// Igual que vssDriveEnsureFolder, pero para una carpeta con nombre arbitrario
+// (usado para VikingRelevamiento / VikingMantenimiento, cacheado por nombre).
+const _vssFolderIdsPorNombre = {};
+function vssDriveEnsureFolderNamed(token, nombreCarpeta, cb){
+  if(_vssFolderIdsPorNombre[nombreCarpeta]){ cb(_vssFolderIdsPorNombre[nombreCarpeta]); return; }
+  const q = encodeURIComponent("name='"+nombreCarpeta+"' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)', {headers:{Authorization:'Bearer '+token}})
+    .then(function(r){return r.json();}).then(function(data){
+      if(data.files && data.files.length){ _vssFolderIdsPorNombre[nombreCarpeta]=data.files[0].id; cb(_vssFolderIdsPorNombre[nombreCarpeta]); return; }
+      fetch('https://www.googleapis.com/drive/v3/files', {method:'POST', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}, body:JSON.stringify({name:nombreCarpeta, mimeType:'application/vnd.google-apps.folder'})})
+        .then(function(r){return r.json();}).then(function(f){ _vssFolderIdsPorNombre[nombreCarpeta]=f.id; cb(_vssFolderIdsPorNombre[nombreCarpeta]); })
+        .catch(function(){ alert('Error al crear/buscar la carpeta '+nombreCarpeta+' en Drive.'); });
+    }).catch(function(){ alert('Error al buscar la carpeta '+nombreCarpeta+' en Drive.'); });
+}
+// Busca un archivo por nombre dentro de una carpeta ya resuelta (folderId). cb(fileOrNull)
+function vssDriveBuscarArchivo(token, folderId, nombreArchivo, cb){
+  const q = encodeURIComponent("name='"+nombreArchivo+"' and '"+folderId+"' in parents and trashed=false");
+  fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name,modifiedTime)', {headers:{Authorization:'Bearer '+token}})
+    .then(function(r){return r.json();}).then(function(data){ cb((data.files&&data.files[0])||null); })
+    .catch(function(){ cb(null); });
+}
+// Baja y parsea el JSON de un archivo por su id. cb(objOrNull)
+function vssDriveBajarJSON(token, fileId, cb){
+  fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media', {headers:{Authorization:'Bearer '+token}})
+    .then(function(r){return r.json();}).then(cb).catch(function(){ cb(null); });
+}
+// Sube/actualiza un archivo con nombre propio dentro de una carpeta (crea si no existe). cb(fileId)
+function vssDriveSubirArchivo(token, folderId, nombreArchivo, obj, cb){
+  vssDriveBuscarArchivo(token, folderId, nombreArchivo, function(existente){
+    const data = JSON.stringify(obj);
+    if(existente){
+      fetch('https://www.googleapis.com/upload/drive/v3/files/'+existente.id+'?uploadType=media', {method:'PATCH', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}, body:data})
+        .then(function(r){return r.json();}).then(function(f){ cb(f.id); }).catch(function(e){ alert('Error al subir a Drive: '+e.message); });
+    } else {
+      const meta = JSON.stringify({name:nombreArchivo, parents:[folderId]});
+      const form = new FormData();
+      form.append('metadata', new Blob([meta],{type:'application/json'}));
+      form.append('file', new Blob([data],{type:'application/json'}));
+      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {method:'POST', headers:{Authorization:'Bearer '+token}, body:form})
+        .then(function(r){return r.json();}).then(function(f){ cb(f.id); }).catch(function(e){ alert('Error al subir a Drive: '+e.message); });
+    }
+  });
+}
 function vssDriveCargarGoogle(cb){
   if(typeof google!=='undefined'){ cb(); return; }
   const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client';
@@ -1524,34 +1567,53 @@ const aprBtn=p.estado==='Aprobado'&&!clienteYaCreado?'<button class="btn btn-sm 
   }).join('');
 }
 
+function procesarRelevamientosImportados(data){
+  if(!data.relevamientos||data.tipo!=='viking_relevamiento') return null;
+  let importados=0;
+  data.relevamientos.forEach(r=>{
+    const existe=DB.presupuestos.find(p=>p.relId===r.id&&p.nombre===r.nombre);
+    if(!existe){
+      DB.presupuestos.unshift({
+        id:DB.nid++,relId:r.id,nombre:r.nombre,tel:r.tel,dir:r.dir,barrio:r.barrio||'',
+        tipo:r.tipo,sup:r.sup,plantas:r.plantas,material:r.material,alarma:r.alarma,
+        perro:r.perro,horario:r.horario,modelo:r.modelo,sensores:r.sensores,
+        router:r.router,distancia:r.distancia,obstaculos:r.obstaculos,
+        tecnico:r.tecnico,obs:r.obs,estado:r.estado||'Borrador',fecha:r.fecha||today()
+      });
+      importados++;
+    }
+  });
+  save(); renderPresupuestos();
+  return importados;
+}
 function importarRelevamiento(input){
   const file=input.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=e=>{
     try{
       const data=JSON.parse(e.target.result);
-      if(!data.relevamientos||data.tipo!=='viking_relevamiento'){
-        alert('Archivo inválido. No es un relevamiento de Viking.');return;
-      }
-      let importados=0;
-      data.relevamientos.forEach(r=>{
-        const existe=DB.presupuestos.find(p=>p.relId===r.id&&p.nombre===r.nombre);
-        if(!existe){
-          DB.presupuestos.unshift({
-            id:DB.nid++,relId:r.id,nombre:r.nombre,tel:r.tel,dir:r.dir,barrio:r.barrio||'',
-            tipo:r.tipo,sup:r.sup,plantas:r.plantas,material:r.material,alarma:r.alarma,
-            perro:r.perro,horario:r.horario,modelo:r.modelo,sensores:r.sensores,
-            router:r.router,distancia:r.distancia,obstaculos:r.obstaculos,
-            tecnico:r.tecnico,obs:r.obs,estado:r.estado||'Borrador',fecha:r.fecha||today()
-          });
-          importados++;
-        }
-      });
-      save(); input.value=''; renderPresupuestos();
+      const importados=procesarRelevamientosImportados(data);
+      if(importados===null){ alert('Archivo inválido. No es un relevamiento de Viking.'); return; }
+      input.value='';
       alert('✔ '+importados+' relevamiento'+(importados!==1?'s':'')+' importado'+(importados!==1?'s':'')+' correctamente.');
     }catch(err){alert('Error al leer el archivo: '+err.message);}
   };
   reader.readAsText(file);
+}
+function vssSyncRelevamientosDrive(){
+  vssDriveGetToken(function(token){
+    vssDriveEnsureFolderNamed(token, 'VikingRelevamiento', function(folderId){
+      vssDriveBuscarArchivo(token, folderId, 'relevamientos_pendientes.json', function(f){
+        if(!f){ alert('No hay relevamientos pendientes en Drive todavía.'); return; }
+        vssDriveBajarJSON(token, f.id, function(data){
+          if(!data){ alert('Error al descargar el archivo de Drive.'); return; }
+          const importados=procesarRelevamientosImportados(data);
+          if(importados===null){ alert('El archivo en Drive no es un relevamiento válido.'); return; }
+          alert('✔ '+importados+' relevamiento'+(importados!==1?'s':'')+' importado'+(importados!==1?'s':'')+' desde Drive.');
+        });
+      });
+    });
+  });
 }
 
 function cambiarEstadoPres(id,estado){
@@ -6754,8 +6816,24 @@ function exportarMant(clienteId, mantIdx){
   a.download = 'mant_'+m.numero+'_'+c.nombre.replace(/[^a-zA-Z0-9]/g,'_')+'.json';
   a.click();
   URL.revokeObjectURL(url);
+  vssSubirPendienteMantDrive(export_data);
 }
 
+function procesarMantenimientoImportado(data){
+  if(data.tipo!=='viking_mantenimiento') return null;
+  var reg = data.registro;
+  if(!reg.clienteId&&data.clienteId) reg.clienteId=parseInt(data.clienteId)||data.clienteId;
+  var c = DB.clientes.find(function(x){return x.id===parseInt(reg.clienteId)||x.id===reg.clienteId;});
+  if(!c&&reg.cliente) c=DB.clientes.find(function(x){return x.nombre===reg.cliente;});
+  if(c){ reg.clienteNombre=c.nombre; reg.clienteId=c.id; reg.modelo=reg.modelo||c.modelo||''; }
+  if(!DB.mantenimientos) DB.mantenimientos=[];
+  var existing=DB.mantenimientos.findIndex(function(m){return m.numero===reg.numero;});
+  var actualizado = existing>=0;
+  if(actualizado) DB.mantenimientos[existing]=reg;
+  else DB.mantenimientos.unshift(reg);
+  save();
+  return {numero:reg.numero, cliente:reg.clienteNombre||'cliente desconocido', actualizado:actualizado};
+}
 function importarMant(input){
   var file = input.files[0];
   if(!file) return;
@@ -6763,31 +6841,40 @@ function importarMant(input){
   reader.onload = function(e){
     try{
       var data = JSON.parse(e.target.result);
-      if(data.tipo!=='viking_mantenimiento'){
-        alert('Archivo inválido. No es un registro de mantenimiento Viking.');
-        return;
-      }
-      var reg = data.registro;
-      // Ensure clienteId is set
-      if(!reg.clienteId&&data.clienteId) reg.clienteId=parseInt(data.clienteId)||data.clienteId;
-      var c = DB.clientes.find(function(x){return x.id===parseInt(reg.clienteId)||x.id===reg.clienteId;});
-      if(!c&&reg.cliente) c=DB.clientes.find(function(x){return x.nombre===reg.cliente;});
-      if(c){ reg.clienteNombre=c.nombre; reg.clienteId=c.id; reg.modelo=reg.modelo||c.modelo||''; }
-      if(!DB.mantenimientos) DB.mantenimientos=[];
-      var existing=DB.mantenimientos.findIndex(function(m){return m.numero===reg.numero;});
-      if(existing>=0){
-        DB.mantenimientos[existing]=reg;
-        alert('Registro '+reg.numero+' actualizado — '+(reg.clienteNombre||'cliente desconocido'));
-      } else {
-        DB.mantenimientos.unshift(reg);
-        alert('Registro '+reg.numero+' importado — '+(reg.clienteNombre||'cliente desconocido'));
-      }
-      save();
+      var r = procesarMantenimientoImportado(data);
+      if(!r){ alert('Archivo inválido. No es un registro de mantenimiento Viking.'); return; }
+      alert('Registro '+r.numero+' '+(r.actualizado?'actualizado':'importado')+' — '+r.cliente);
     } catch(err){
       alert('Error al leer el archivo: '+err.message);
     }
   };
   reader.readAsText(file);
+}
+function vssSyncMantenimientoDrive(){
+  vssDriveGetToken(function(token){
+    vssDriveEnsureFolderNamed(token, 'VikingMantenimiento', function(folderId){
+      vssDriveBuscarArchivo(token, folderId, 'completado.json', function(f){
+        if(!f){ alert('No hay ningún mantenimiento completado en Drive todavía.'); return; }
+        vssDriveBajarJSON(token, f.id, function(data){
+          if(!data){ alert('Error al descargar el archivo de Drive.'); return; }
+          var r = procesarMantenimientoImportado(data);
+          if(!r){ alert('El archivo en Drive no es un registro de mantenimiento válido.'); return; }
+          alert('✔ Registro '+r.numero+' '+(r.actualizado?'actualizado':'importado')+' desde Drive — '+r.cliente);
+        });
+      });
+    });
+  });
+}
+// Sube el registro "pendiente" (el que se le asigna a un técnico) a Drive,
+// para que viking-mantenimiento lo pueda traer sin transferencia manual.
+function vssSubirPendienteMantDrive(export_data){
+  vssDriveGetToken(function(token){
+    vssDriveEnsureFolderNamed(token, 'VikingMantenimiento', function(folderId){
+      vssDriveSubirArchivo(token, folderId, 'pendiente.json', export_data, function(){
+        // silencioso: no interrumpe el flujo de exportarMant/exportarMantNew
+      });
+    });
+  });
 }
 
 
@@ -7029,6 +7116,7 @@ function exportarMantNew(numero){
   a.download='mant_'+m.numero+'_'+(m.clienteNombre||'').replace(/[^a-zA-Z0-9]/g,'_')+'.json';
   a.click();
   URL.revokeObjectURL(url);
+  vssSubirPendienteMantDrive(export_data);
 }
 
 
