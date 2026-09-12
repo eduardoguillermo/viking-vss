@@ -122,7 +122,11 @@ function stockActual(cid){
 }
 function invalidarStockCache(){ _stockCache=null; }
 
-function save(){ invalidarStockCache(); localStorage.setItem(SKEY,JSON.stringify(DB)); }
+function save(){
+  invalidarStockCache();
+  localStorage.setItem(SKEY,JSON.stringify(DB));
+  if(window._vssFolderHandle) vssBackupEnCarpeta(window._vssFolderHandle);
+}
 
 // =======================================================
 // NAV
@@ -385,32 +389,6 @@ function guardarCliente(){
   // OT se crea manualmente desde Movimiento de fondos al registrar el anticipo
   limpiarAlta(); goTo('clientes');
 }
-
-// Backup reminder on every load
-setTimeout(function(){
-  var banner = document.createElement('div');
-  banner.id = 'backup-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#B71C1C;color:#fff;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:9999;font-size:13px;font-family:inherit';
-  var btnExp = document.createElement('button');
-  btnExp.textContent = 'Exportar ahora';
-  btnExp.style.cssText = 'background:#fff;color:#B71C1C;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700';
-  btnExp.onclick = function(){ exportarJSON(); document.getElementById('backup-banner').remove(); };
-  var btnCer = document.createElement('button');
-  btnCer.textContent = 'Cerrar';
-  btnCer.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
-  btnCer.onclick = function(){ document.getElementById('backup-banner').remove(); };
-  var btnDrive = document.createElement('button');
-  btnDrive.textContent = '☁️ Drive';
-  btnDrive.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
-  btnDrive.onclick = function(){ exportarADrive(); document.getElementById('backup-banner').remove(); };
-  var span = document.createElement('span');
-  span.textContent = '💾 Recordatorio: hacé un backup de tus datos para no perderlos.';
-  var btns = document.createElement('div');
-  btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0';
-  btns.appendChild(btnExp); btns.appendChild(btnDrive); btns.appendChild(btnCer);
-  banner.appendChild(span); banner.appendChild(btns);
-  document.body.appendChild(banner);
-}, 1500);
 
 // =======================================================
 // VER CLIENTE
@@ -878,6 +856,222 @@ function agregarTipo(){
 function elimTipo(i){if(!confirm('¿Eliminar tipo de sensor?'))return;DB.tipos.splice(i,1);save();renderTipos();}
 
 // =======================================================
+// SNAPSHOTS LOCALES Y CIERRE SEGURO (mismo patrón que Control Financiero)
+// =======================================================
+const VSS_BKUP_KEY = 'viking_backups';
+const VSS_BKUP_MAX = 10;
+
+function vssCargarSnapshots(){
+  try { return JSON.parse(localStorage.getItem(VSS_BKUP_KEY)) || []; } catch(e){ return []; }
+}
+function vssGuardarSnapshots(bkups){
+  try { localStorage.setItem(VSS_BKUP_KEY, JSON.stringify(bkups)); } catch(e){}
+}
+function vssHacerSnapshot(manual){
+  try {
+    const bkups = vssCargarSnapshots();
+    bkups.unshift({ ts: Date.now(), manual: !!manual, label: manual?'Manual':'Automático', data: JSON.stringify(DB) });
+    // Mantener máximo VSS_BKUP_MAX: priorizar borrar automáticos viejos antes que manuales
+    if(bkups.length > VSS_BKUP_MAX){
+      const idxAuto = [...bkups.map(function(b,i){return {b:b,i:i};})].reverse().find(function(x){return !x.b.manual;});
+      if(idxAuto) bkups.splice(idxAuto.i, 1); else bkups.pop();
+    }
+    vssGuardarSnapshots(bkups);
+    return true;
+  } catch(e){ console.warn('Snapshot:', e); return false; }
+}
+function vssFmtTs(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString('es-AR') + ' ' + d.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit',hour12:false});
+}
+function vssRestaurarSnapshot(ts){
+  if(!confirm('¿Restaurar este snapshot? Los datos actuales se guardarán como snapshot antes de restaurar.')) return;
+  vssHacerSnapshot(false); // guardar estado actual antes de pisarlo
+  const bkups = vssCargarSnapshots();
+  const bkup = bkups.find(function(b){return b.ts===ts;});
+  if(!bkup){ alert('Snapshot no encontrado'); return; }
+  try {
+    DB = JSON.parse(bkup.data);
+    save();
+    document.getElementById('modal-vss-snapshots')?.remove();
+    alert('✅ Snapshot restaurado: ' + vssFmtTs(ts) + '\nSe recargará la aplicación.');
+    location.reload();
+  } catch(e){ alert('Error al restaurar: ' + e.message); }
+}
+function vssBorrarSnapshot(ts){
+  if(!confirm('¿Eliminar este snapshot?')) return;
+  vssGuardarSnapshots(vssCargarSnapshots().filter(function(b){return b.ts!==ts;}));
+  vssMostrarSnapshots();
+}
+function vssMostrarSnapshots(){
+  document.getElementById('modal-vss-snapshots')?.remove();
+  const bkups = vssCargarSnapshots();
+  const rows = bkups.length ? bkups.map(function(b){
+    return '<tr>'+
+      '<td style="padding:8px 6px;font-size:13px">'+vssFmtTs(b.ts)+'</td>'+
+      '<td style="padding:8px 6px;font-size:12px;color:'+(b.manual?'#1B5E20':'#666')+'">'+b.label+'</td>'+
+      '<td style="padding:8px 6px;text-align:right">'+
+        '<button onclick="vssRestaurarSnapshot('+b.ts+')" style="background:#7F0000;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;margin-right:4px">Restaurar</button>'+
+        '<button onclick="vssBorrarSnapshot('+b.ts+')" style="background:#B71C1C;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer">✕</button>'+
+      '</td></tr>';
+  }).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:#AAA">Sin snapshots guardados</td></tr>';
+  const ov = document.createElement('div');
+  ov.id = 'modal-vss-snapshots';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:3000;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:10px;padding:24px;min-width:420px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
+        '<h3 style="margin:0;font-size:16px">💾 Snapshots locales</h3>'+
+        '<button onclick="document.getElementById(\'modal-vss-snapshots\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666">✕</button>'+
+      '</div>'+
+      '<p style="font-size:12px;color:#666;margin:0 0 12px">Backups guardados automáticamente en este dispositivo (máx. '+VSS_BKUP_MAX+').</p>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
+        '<thead><tr style="border-bottom:2px solid #DDD">'+
+          '<th style="padding:6px;text-align:left;font-size:12px;color:#666">Fecha</th>'+
+          '<th style="padding:6px;text-align:left;font-size:12px;color:#666">Tipo</th>'+
+          '<th style="padding:6px;text-align:right;font-size:12px;color:#666">Acción</th>'+
+        '</tr></thead><tbody>'+rows+'</tbody>'+
+      '</table>'+
+      '<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">'+
+        '<button onclick="vssHacerSnapshot(true);vssMostrarSnapshots();" style="background:#B71C1C;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:13px;cursor:pointer">📸 Guardar snapshot ahora</button>'+
+        '<button onclick="document.getElementById(\'modal-vss-snapshots\').remove()" style="background:#F2F2F2;color:#222;border:none;border-radius:4px;padding:6px 14px;font-size:13px;cursor:pointer">Cerrar</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+}
+function vssSalir(){
+  const ok = vssHacerSnapshot(true);
+  var lineas = '📦 Backup al salir\n\n'+(ok?'✅':'❌')+' Snapshot local: '+(ok?'guardado':'error');
+  if(window._vssFolderHandle) lineas += '\n⏳ Carpeta local: guardando...';
+  else lineas += '\n➖ Carpeta local: no vinculada';
+  lineas += '\n➖ Drive: sin integración — usá "☁️ Guardar en Drive" en Backup si querés subirlo a mano.';
+  if(window._vssFolderHandle) vssBackupEnCarpeta(window._vssFolderHandle);
+  alert(lineas);
+  window.close();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CARPETA LOCAL — File System Access API + IndexedDB (mismo patrón que Finanzas)
+// ═══════════════════════════════════════════════════════════════
+const VSS_FOLDER_DB    = 'viking-folder-db';
+const VSS_FOLDER_STORE = 'handles';
+const VSS_FOLDER_KEY   = 'carpeta';
+const VSS_MAX_BK       = 7;
+
+function vssAbrirFolderDB(){
+  return new Promise(function(res, rej){
+    const req = indexedDB.open(VSS_FOLDER_DB, 1);
+    req.onupgradeneeded = function(e){ e.target.result.createObjectStore(VSS_FOLDER_STORE); };
+    req.onsuccess = function(e){ res(e.target.result); };
+    req.onerror = function(e){ rej(e.target.error); };
+  });
+}
+async function vssGuardarHandle(handle){
+  try {
+    const db = await vssAbrirFolderDB();
+    const tx = db.transaction(VSS_FOLDER_STORE, 'readwrite');
+    tx.objectStore(VSS_FOLDER_STORE).put(handle, VSS_FOLDER_KEY);
+    await new Promise(function(res, rej){ tx.oncomplete = res; tx.onerror = rej; });
+    db.close();
+  } catch(e){ console.warn('vssGuardarHandle:', e); }
+}
+async function vssLeerHandle(){
+  try {
+    const db = await vssAbrirFolderDB();
+    const tx = db.transaction(VSS_FOLDER_STORE, 'readonly');
+    const req = tx.objectStore(VSS_FOLDER_STORE).get(VSS_FOLDER_KEY);
+    const handle = await new Promise(function(res, rej){ req.onsuccess=function(){res(req.result);}; req.onerror=rej; });
+    db.close();
+    return handle || null;
+  } catch(e){ return null; }
+}
+async function vssVerificarPermiso(handle){
+  try {
+    const opts = { mode: 'readwrite' };
+    if(await handle.queryPermission(opts) === 'granted') return true;
+    if(await handle.requestPermission(opts) === 'granted') return true;
+    return false;
+  } catch(e){ return false; }
+}
+// Solo consulta el permiso sin pedirlo — no requiere gesto del usuario, segura para llamar en automático.
+async function vssPermisoOtorgado(handle){
+  try { return (await handle.queryPermission({mode:'readwrite'})) === 'granted'; }
+  catch(e){ return false; }
+}
+async function vssSeleccionarCarpeta(){
+  if(!('showDirectoryPicker' in window)){
+    alert('Tu navegador no soporta la selección de carpeta local. Usá Chrome o Brave.');
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({mode:'readwrite'});
+    await vssGuardarHandle(handle);
+    window._vssFolderHandle = handle;
+    vssActualizarEstadoCarpeta(handle.name);
+    await vssBackupEnCarpeta(handle);
+    alert('📁 Carpeta vinculada: '+handle.name+'\nSe va a actualizar un backup ahí cada vez que se guarden cambios.');
+  } catch(e){
+    if(e.name !== 'AbortError') console.warn('vssSeleccionarCarpeta:', e);
+  }
+}
+function vssActualizarEstadoCarpeta(nombre){
+  const st = document.getElementById('vss-carpeta-status');
+  if(st){ st.textContent = nombre ? ('📁 Vinculada: '+nombre) : '➖ No vinculada'; st.style.color = nombre ? 'var(--green)' : 'var(--text2)'; }
+}
+async function vssBackupEnCarpeta(handle){
+  if(!handle) return;
+  const ok = await vssVerificarPermiso(handle);
+  if(!ok) return;
+  try {
+    const nombre = 'viking_backup_'+today()+'.json';
+    const fileHandle = await handle.getFileHandle(nombre, {create:true});
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(DB, null, 2));
+    await writable.close();
+    const entries = [];
+    for await (const entry of handle.values()){
+      if(entry.kind==='file' && entry.name.startsWith('viking_backup_') && entry.name.endsWith('.json')) entries.push(entry.name);
+    }
+    entries.sort().reverse();
+    for(const old of entries.slice(VSS_MAX_BK)){
+      try { await handle.removeEntry(old); } catch(e){}
+    }
+    vssActualizarEstadoCarpeta(handle.name);
+  } catch(e){ console.warn('vssBackupEnCarpeta:', e); }
+}
+async function vssRestaurarCarpeta(){
+  try {
+    const handle = await vssLeerHandle();
+    if(!handle) return;
+    window._vssFolderHandlePendiente = handle;
+    const ok = await vssPermisoOtorgado(handle);
+    if(!ok){ vssMostrarBannerReauthCarpeta(handle); return; }
+    window._vssFolderHandle = handle;
+    vssActualizarEstadoCarpeta(handle.name);
+  } catch(e){ console.warn('vssRestaurarCarpeta:', e); }
+}
+// Banner discreto: el permiso venció y hace falta un click real del usuario para renovarlo
+// (la API no permite renovarlo en automático).
+function vssMostrarBannerReauthCarpeta(handle){
+  if(document.getElementById('vss-reauth-carpeta')) return;
+  const b = document.createElement('div');
+  b.id = 'vss-reauth-carpeta';
+  b.style.cssText = 'position:fixed;bottom:16px;left:16px;background:#1A1A1A;color:#fff;padding:10px 14px;border-radius:8px;z-index:9998;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.3);font-size:12.5px;max-width:340px';
+  b.innerHTML = '🔒 La carpeta local ('+handle.name+') necesita que confirmes el acceso de nuevo.'+
+    '<button id="vss-reauth-btn" style="background:#B71C1C;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Reautorizar</button>'+
+    '<span id="vss-reauth-x" style="cursor:pointer;color:#AAA;padding:0 2px">✕</span>';
+  document.body.appendChild(b);
+  document.getElementById('vss-reauth-x').onclick = function(){ b.remove(); };
+  document.getElementById('vss-reauth-btn').onclick = async function(){
+    try {
+      const granted = (await handle.requestPermission({mode:'readwrite'})) === 'granted';
+      if(granted){ window._vssFolderHandle = handle; vssActualizarEstadoCarpeta(handle.name); b.remove(); }
+      else alert('No se otorgó el permiso. Podés vincular la carpeta de nuevo con "📂 Elegir carpeta local".');
+    } catch(e){ alert('Error al reautorizar: '+e.message); }
+  };
+}
+
+// =======================================================
 // BACKUP
 // =======================================================
 
@@ -1039,13 +1233,15 @@ function renderBackupInfo(){
   const otas=c.reduce((a,x)=>a+((x.ota&&x.ota.length)||0),0);
   const mantos=c.reduce((a,x)=>a+((x.mant&&x.mant.length)||0),0);
   const kb=Math.round(JSON.stringify(DB).length/1024);
+  const snaps=vssCargarSnapshots().length;
   document.getElementById('backup-info').innerHTML=`
     ${fbox('Clientes totales',c.length)}
     ${fbox('Dispositivos Zigbee',devs)}
     ${fbox('Actualizaciones OTA',otas)}
     ${fbox('Visitas de mantenimiento',mantos)}
     ${fbox('Versiones SW',DB.versiones.length)}
-    ${fbox('Tamaño de datos',kb+' KB')}`;
+    ${fbox('Tamaño de datos',kb+' KB')}
+    ${fbox('Snapshots locales',snaps+' / '+VSS_BKUP_MAX)}`;
 }
 
 // =======================================================
@@ -6649,8 +6845,20 @@ function exportarMantNew(numero){
 
 // INIT
 // =======================================================
+// Almacenamiento persistente: evita que el navegador evicte IndexedDB
+// (y con eso el handle de la carpeta local) por presión de espacio o inactividad.
+if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(function(){}); }
 goTo('clientes');
 setTimeout(initNavCollapse, 50);
+
+// Snapshot local al cerrar con la X (beforeunload — síncrono, siempre funciona)
+window.addEventListener('beforeunload', function(){ vssHacerSnapshot(false); });
+// Snapshot al ocultar la pestaña o minimizar (sin Drive: Viking no tiene integración OAuth)
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden') vssHacerSnapshot(false);
+});
+// Reconecta la carpeta local vinculada (si hay una) sin pedir permiso — solo consulta
+vssRestaurarCarpeta();
 
 // Backup reminder on every load
 setTimeout(function(){
