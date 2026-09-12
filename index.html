@@ -34,7 +34,7 @@ function toggleNav(el){
 <div class="topbar">
   <div class="brand">
     <div class="brand-icon">🛡️</div>
-    <div><div class="brand-name">Viking Security Systems</div><span class="brand-sub">Sistema Administrativo v2.4</span></div>
+    <div><div class="brand-name">Viking Security Systems</div><span class="brand-sub">Sistema Administrativo v2.5</span></div>
   </div>
   <div style="position:relative;flex:1;max-width:400px;margin:0 auto">
     <input id="global-search" type="text" placeholder="🔍 Buscar clientes, presupuestos, componentes..."
@@ -671,10 +671,19 @@ function toggleNav(el){
           </div>
           <hr class="div">
           <div style="margin-bottom:20px">
+            <div class="sectitle">Google Drive</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Conectá tu cuenta de Google y la app va a mantener sola un backup actualizado en una carpeta <code>VikingSecuritySystems</code> de tu Drive (archivo <code>backup_autosync.json</code>), sincronizando en segundo plano cada vez que hay cambios. También podés subir una copia con fecha a mano, o restaurar cualquier backup guardado ahí.</p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+              <button class="btn btn-p" onclick="vssDriveSubir()">☁️ Subir backup a Drive</button>
+              <button class="btn" onclick="vssDriveRestaurar()" style="color:var(--blue);border-color:var(--blue)">📂 Restaurar backup de Drive</button>
+            </div>
+            <span id="vss-drive-badge" style="font-size:12px;color:var(--text2)">➖ Drive: sin conectar</span>
+          </div>
+          <hr class="div">
+          <div style="margin-bottom:20px">
             <div class="sectitle">Exportar datos</div>
-            <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Descarga todos los datos en un archivo JSON. Guardalo en tu carpeta de OneDrive para que se sincronice automáticamente con la nube.</p>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Descarga todos los datos en un archivo JSON, para guardar a mano donde quieras.</p>
             <button class="btn btn-p" onclick="exportarJSON()">⬇️ Exportar JSON (backup)</button>
-            <button class="btn" onclick="exportarADrive()" style="margin-left:8px;color:var(--blue);border-color:var(--blue)">☁️ Guardar en Drive</button>
           </div>
           <hr class="div">
           <div style="margin-bottom:20px">
