@@ -129,7 +129,7 @@
 
 <div class="layout">
 <nav class="sidebar">
-  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.4</p></div></div>
+  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.5</p></div></div>
 
   <div class="section-label">Introducción</div>
   <a href="#intro">🏠 ¿Qué es esta app?</a>
@@ -181,7 +181,7 @@
     <h1>🛡️ Viking Security Systems</h1>
     <p>Manual del sistema administrativo — ciclo completo del negocio, de presupuesto a mantenimiento</p>
     <div class="hero-badges">
-      <span class="badge badge-red">✓ v2.4</span>
+      <span class="badge badge-red">✓ v2.5</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
     </div>
@@ -461,11 +461,17 @@
     <p>La vinculación se recuerda entre sesiones. Al reabrir la app intenta reconectar la carpeta en silencio; si el navegador venció el permiso, aparece un banner abajo a la izquierda pidiendo un clic para reautorizar — el navegador exige ese gesto explícito, no se puede renovar solo.</p>
     <div class="note">📌 Requiere un navegador con soporte de File System Access (Chrome o Brave). En otros navegadores, el botón avisa que no está disponible y no rompe nada más.</div>
 
+    <h2>Google Drive <span class="badge badge-green">Nuevo</span></h2>
+    <p>"☁️ Subir backup a Drive" conecta tu cuenta de Google (una sola vez) y crea una carpeta visible <code>VikingSecuritySystems</code> en tu Drive. A partir de ahí, cada vez que se guarda un cambio en la app, un archivo <code>backup_autosync.json</code> se actualiza solo en segundo plano (con una espera de 30 segundos de calma para no sincronizar en cada tecla) — es sincronización real, no compartir un archivo.</p>
+    <p>El mismo botón también sirve para forzar una subida inmediata con fecha y hora (<code>backup_viking_&lt;fecha&gt;.json</code>), como punto de restauración aparte del autosync. "📂 Restaurar backup de Drive" lista todos los backups de esa carpeta — autosync y manuales — para elegir cuál traer de vuelta.</p>
+    <p>El estado de la conexión se ve en Backup: ✅ sincronizado, ⏳ pendiente, ☁️ sincronizando, ⚠️ error, o ➖ sin conectar. Al reabrir la app, si la sesión de Google seguía vigente, se reconecta sola sin pedir nada.</p>
+    <div class="note">📌 "🚪 Salir" y minimizar/cambiar de pestaña también disparan una sincronización a Drive si hay cambios pendientes, además del snapshot local y la carpeta local.</div>
+
     <h2>Botón "🚪 Salir" <span class="badge badge-green">Nuevo</span></h2>
-    <p>En la barra superior. Fuerza un snapshot local manual y, si hay una carpeta vinculada, actualiza también el backup ahí — todo antes de cerrar la ventana. Muestra un resumen de qué se guardó bien y qué no.</p>
+    <p>En la barra superior. Fuerza un snapshot local manual y, si hay carpeta local o Drive conectados, actualiza también esos backups — todo antes de cerrar la ventana. Muestra un resumen de qué se guardó bien y qué no.</p>
 
     <h2>Exportar / importar</h2>
-    <p>"⬇️ Exportar JSON" descarga todos los datos en un único archivo. "☁️ Guardar en Drive" usa el selector de compartir del sistema (Web Share, en Android/mobile) para mandar ese mismo archivo directo a Google Drive; en PC simplemente descarga el archivo y pide subirlo a mano — <b>no es una sincronización automática</b> como la carpeta local o como otras apps del ecosistema Viking, es exportar y compartir.</p>
+    <p>"⬇️ Exportar JSON" descarga todos los datos en un único archivo, para guardar a mano donde quieras.</p>
     <p>"⬆️ Restaurar backup" reemplaza <b>todos</b> los datos actuales por los del archivo — pide confirmación porque no se puede deshacer.</p>
 
     <h2>Niveles de borrado</h2>
@@ -489,6 +495,15 @@
 
     <details class="changelog-details" open>
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+      <div class="changelog-entry">
+        <div class="changelog-version"><span class="v-num">v2.5</span><span class="changelog-tag tag-feature">feature</span></div>
+        <ul class="changelog-list">
+          <li>Backup real a Google Drive (mismo patrón que Control Financiero): sincronización automática en segundo plano a una carpeta <code>VikingSecuritySystems</code>, subida manual con fecha, y restaurar desde cualquier backup de esa carpeta</li>
+          <li>Reemplazado el viejo "☁️ Guardar en Drive" — antes solo abría el selector de compartir del sistema y no subía nada de verdad</li>
+          <li>Quitado el banner de recordatorio de backup — con snapshots automáticos, carpeta local y Drive real ya no tiene sentido pedirle al usuario que se acuerde de exportar a mano</li>
+        </ul>
+      </div>
 
       <div class="changelog-entry">
         <div class="changelog-version"><span class="v-num">v2.4</span><span class="changelog-tag tag-feature">feature</span></div>
