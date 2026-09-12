@@ -34,7 +34,7 @@ function toggleNav(el){
 <div class="topbar">
   <div class="brand">
     <div class="brand-icon">🛡️</div>
-    <div><div class="brand-name">Viking Security Systems</div><span class="brand-sub">Sistema Administrativo v2.3</span></div>
+    <div><div class="brand-name">Viking Security Systems</div><span class="brand-sub">Sistema Administrativo v2.4</span></div>
   </div>
   <div style="position:relative;flex:1;max-width:400px;margin:0 auto">
     <input id="global-search" type="text" placeholder="🔍 Buscar clientes, presupuestos, componentes..."
@@ -46,6 +46,7 @@ function toggleNav(el){
     <span class="topbar-ctx" id="tctx"></span>
     <button class="btn btn-sm" title="Ver el manual completo" onclick="window.open('instructivo.html','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')">❓ Ayuda</button>
     <button class="install-btn" id="install-btn" onclick="instalarPWA()">📲 Instalar app</button>
+    <button class="btn btn-sm" style="background:#334155;color:#fff;border-color:#334155;margin-left:6px" title="Guardar snapshot y cerrar" onclick="vssSalir()">🚪 Salir</button>
   </div>
 </div>
 
@@ -654,6 +655,21 @@ function toggleNav(el){
       <div class="card">
         <div class="card-head"><div class="card-title">💾 Backup y restauración de datos</div></div>
         <div class="card-body">
+          <div style="margin-bottom:20px">
+            <div class="sectitle">Snapshots locales</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:10px">La app guarda una copia automática en este dispositivo cada vez que cerrás la pestaña, minimizás o cambiás de ventana (hasta 10, se van rotando). El botón "🚪 Salir" de la barra superior fuerza un snapshot manual antes de cerrar.</p>
+            <button class="btn btn-p" onclick="vssMostrarSnapshots()">💾 Ver snapshots locales</button>
+          </div>
+          <hr class="div">
+          <div style="margin-bottom:20px">
+            <div class="sectitle">Carpeta local</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Vinculá una carpeta de tu PC (por ejemplo, tu carpeta de OneDrive o Google Drive sincronizada) y la app va a mantener ahí un archivo <code>viking_backup_&lt;fecha&gt;.json</code> actualizado cada vez que se guarda un cambio — sin tocar nada manualmente. Se conservan los últimos 7 backups por fecha. Requiere Chrome o Brave.</p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-p" onclick="vssSeleccionarCarpeta()">📂 Elegir carpeta local</button>
+              <span id="vss-carpeta-status" style="font-size:12px;color:var(--text2)">➖ No vinculada</span>
+            </div>
+          </div>
+          <hr class="div">
           <div style="margin-bottom:20px">
             <div class="sectitle">Exportar datos</div>
             <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Descarga todos los datos en un archivo JSON. Guardalo en tu carpeta de OneDrive para que se sincronice automáticamente con la nube.</p>
