@@ -281,33 +281,6 @@ function borrarCliente(id){
   if(!confirm('Última confirmación. ¿Eliminar "'+c.nombre+'"?')) return;
   DB.clientes=DB.clientes.filter(function(x){return x.id!==id;});
   save(); renderStats(); renderClientes(); goTo('clientes');
-setTimeout(initNavCollapse, 50);
-
-// Backup reminder on every load
-setTimeout(function(){
-  var banner = document.createElement('div');
-  banner.id = 'backup-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#B71C1C;color:#fff;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:9999;font-size:13px;font-family:inherit';
-  var btnExp = document.createElement('button');
-  btnExp.textContent = 'Exportar ahora';
-  btnExp.style.cssText = 'background:#fff;color:#B71C1C;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700';
-  btnExp.onclick = function(){ exportarJSON(); document.getElementById('backup-banner').remove(); };
-  var btnCer = document.createElement('button');
-  btnCer.textContent = 'Cerrar';
-  btnCer.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
-  btnCer.onclick = function(){ document.getElementById('backup-banner').remove(); };
-  var btnDrive = document.createElement('button');
-  btnDrive.textContent = '☁️ Drive';
-  btnDrive.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px';
-  btnDrive.onclick = function(){ exportarADrive(); document.getElementById('backup-banner').remove(); };
-  var span = document.createElement('span');
-  span.textContent = '💾 Recordatorio: hacé un backup de tus datos para no perderlos.';
-  var btns = document.createElement('div');
-  btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0';
-  btns.appendChild(btnExp); btns.appendChild(btnDrive); btns.appendChild(btnCer);
-  banner.appendChild(span); banner.appendChild(btns);
-  document.body.appendChild(banner);
-}, 1500);
 }
 function reactivar(id){
   DB.clientes.find(x=>x.id===id).estado='Activo';
@@ -6612,6 +6585,7 @@ function exportarMantNew(numero){
 // INIT
 // =======================================================
 goTo('clientes');
+setTimeout(initNavCollapse, 50);
 
 // Backup reminder on every load
 setTimeout(function(){
