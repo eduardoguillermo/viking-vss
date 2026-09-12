@@ -129,7 +129,7 @@
 
 <div class="layout">
 <nav class="sidebar">
-  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.5</p></div></div>
+  <div class="sidebar-logo"><span class="ico">🛡️</span><div><h1>Viking Security</h1><p>Manual · v2.6</p></div></div>
 
   <div class="section-label">Introducción</div>
   <a href="#intro">🏠 ¿Qué es esta app?</a>
@@ -181,7 +181,7 @@
     <h1>🛡️ Viking Security Systems</h1>
     <p>Manual del sistema administrativo — ciclo completo del negocio, de presupuesto a mantenimiento</p>
     <div class="hero-badges">
-      <span class="badge badge-red">✓ v2.5</span>
+      <span class="badge badge-red">✓ v2.6</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
     </div>
@@ -217,6 +217,7 @@
 
     <h2>Importar relevamiento</h2>
     <p>"📥 Importar relevamiento" lee el archivo JSON que exporta la app móvil (<code>viking-relevamiento</code>). Cada relevamiento entra como presupuesto en estado Borrador; si el mismo relevamiento ya se había importado antes, no se duplica.</p>
+    <p>"☁️ Sincronizar desde Drive" <span class="badge badge-green">Nuevo</span> hace lo mismo sin ningún archivo de por medio: la app móvil sube directo a Google Drive los relevamientos que marcás como Aprobados ahí, y este botón los trae — mismo criterio de duplicados que la importación manual.</p>
 
     <h2>Convertir a cliente</h2>
     <p>Un presupuesto <b>Aprobado</b> se puede convertir en cliente con un clic: pasa a la pantalla de Alta con nombre, teléfono, dirección, email, ambientes y modelo ya cargados, y los sensores relevados quedan listos para importarse — solo falta completar lote, MAC, PIN OTA y versión instalada.</p>
@@ -399,6 +400,13 @@
 
     <h2>Importar / exportar con la app móvil</h2>
     <p>"📥 Importar" (acá y en <a href="#backup">Backup</a>) toma un registro completado desde <code>viking-mantenimiento</code> (la app de campo) y lo adosa directo a la ficha del cliente correspondiente. "📤" exporta un registro en el sentido inverso, para pasarlo al móvil.</p>
+    <h2>Sincronización con Drive <span class="badge badge-green">Nuevo</span></h2>
+    <p>El circuito con la app móvil ahora es completamente automático, en los dos sentidos, vía una carpeta <code>VikingMantenimiento</code> en Google Drive:</p>
+    <ul>
+      <li>Al tocar "📤" para exportar un registro pendiente, además de descargar el archivo local, se sube solo un <code>pendiente.json</code> a esa carpeta — la app móvil lo trae con su propio botón "☁️ Buscar pendiente en Drive", sin que se lo tengas que pasar a mano.</li>
+      <li>Cuando el técnico termina la visita en el celular y toca "☁️ Subir a Drive", queda un <code>completado.json</code> en la misma carpeta. "☁️ Sincronizar desde Drive" (acá y en Backup) lo trae e importa con el mismo criterio de la importación manual (actualiza si el número de registro ya existía, si no lo agrega).</li>
+    </ul>
+    <div class="note">📌 Usa la misma sesión de Google que ya tenés conectada para el <a href="#backup">backup de Viking VSS</a> — no hace falta loguearse de nuevo.</div>
   </section>
 
   <!-- REPORTES -->
@@ -495,6 +503,15 @@
 
     <details class="changelog-details" open>
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+      <div class="changelog-entry">
+        <div class="changelog-version"><span class="v-num">v2.6</span><span class="changelog-tag tag-feature">feature</span></div>
+        <ul class="changelog-list">
+          <li>Sincronización directa con Google Drive para las apps móviles (<code>viking-relevamiento</code> y <code>viking-mantenimiento</code>) — ya no hace falta pasar ningún archivo a mano entre el celular y la PC</li>
+          <li>Presupuestos: "☁️ Sincronizar desde Drive" trae los relevamientos aprobados subidos desde el celular</li>
+          <li>Mantenimiento: circuito bidireccional — el registro pendiente se sube solo a Drive al exportarlo, y el completado se trae con "☁️ Sincronizar desde Drive" cuando el técnico lo sube desde el celular</li>
+        </ul>
+      </div>
 
       <div class="changelog-entry">
         <div class="changelog-version"><span class="v-num">v2.5</span><span class="changelog-tag tag-feature">feature</span></div>
